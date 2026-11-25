@@ -1,0 +1,44 @@
+ffmpeg notice
+=============
+
+VidGrab uses ffmpeg to merge video+audio and to create MP3 files. The
+bundled ffmpeg binaries are UNMODIFIED upstream GPL-3.0 builds. Both build
+provenances below were verified against the actual shipped binaries.
+
+Windows (bundled inside VidGrab.exe)
+------------------------------------
+- Binary: ffmpeg n9.0.2-17-g2a571b6068, "win64-gpl-9.0" static build by
+  BtbN/FFmpeg-Builds (repository now at FFmpeg-Builds/FFmpeg-Builds),
+  release autobuild-2026-09-30-13-08. The zip ships a GPLv3 LICENSE.txt.
+- Fetched by windows/vendor/fetch_ffmpeg.*, which pins and verifies the
+  zip SHA-256: a0e45723c72141975f51d8666302e614711745f3102b704ca3f82c897a58d278
+  (matches the checksums.sha256 published with that release).
+- Upstream binary: https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/tag/autobuild-2026-09-30-13-08
+- Corresponding source: FFmpeg git commit 2a571b606854520cf89804d8030c8b328e621689
+  (https://github.com/FFmpeg/FFmpeg/archive/2a571b606854520cf89804d8030c8b328e621689.tar.gz)
+  plus the build recipes in the FFmpeg-Builds repository at that tag.
+  The source archive is also produced as the CI artifact
+  ffmpeg-2a571b6068-src.tar.gz next to the exe.
+
+Android (bundled inside the APK, via youtubedl-android 0.14.0)
+--------------------------------------------------------------
+- Binary: FFmpeg 5.1 (n5.1) shared libraries, taken from the Termux
+  ffmpeg package. Byte-level verified: all 8 arm64-v8a .so files in the
+  JitPack AAR com.github.yausername.youtubedl-android:ffmpeg:0.14.0 are
+  SHA-256 identical to the binaries committed to youtubedl-android in
+  PR #186 "Bump ffmpeg from 4.2.1 to 5.1" (commit a8a636e6b3,
+  2022-09-08), which sourced them from Termux. The Termux package recipe
+  at that time (termux-packages commit
+  3d6eb5967071598397434c4b5d103633f08be71d, packages/ffmpeg/build.sh)
+  declares TERMUX_PKG_VERSION=5.1 and TERMUX_PKG_LICENSE="GPL-3.0";
+  FFmpeg 5.1.1 was only released 2022-09-10, two days after the PR, so
+  the binaries are exactly FFmpeg 5.1 (n5.1).
+- Upstream library: https://github.com/yausername/youtubedl-android
+  (GPL-3.0)
+- Corresponding source: https://ffmpeg.org/releases/ffmpeg-5.1.tar.xz
+  (also produced as the CI artifact ffmpeg-5.1-src.tar.xz next to the
+  APKs) plus the Termux build recipe at the commit above.
+
+General ffmpeg licensing information: https://ffmpeg.org/legal.html
+VidGrab itself is GPL-3.0 (see LICENSE); the GPL-3.0 license text is in
+LICENSE at the root of this repository.

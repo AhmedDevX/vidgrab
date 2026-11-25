@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec.bak
+.venv/
+
+# Android / Gradle
+.gradle/
+local.properties
+*/build/
+*.apk
+*.aab
+*.keystore
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+# fetched ffmpeg binaries (see windows/vendor/README.md)
+windows/vendor/ffmpeg.exe
+windows/vendor/ffprobe.exe

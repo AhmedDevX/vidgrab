@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VidGrab</string>
+    <string name="url_hint">Paste a video link, or share one to this app</string>
+    <string name="fetch_info">Fetch info</string>
+    <string name="fetching">Fetching info...</string>
+    <string name="download">Download</string>
+    <string name="download_starting">Starting download...</string>
+    <string name="send_files">Send files to another device</string>
+    <string name="update_engine">Update download engine</string>
+    <string name="choose_files">Choose files to share</string>
+    <string name="no_files">No files selected</string>
+    <string name="start_sharing">Start sharing</string>
+    <string name="stop_sharing">Stop sharing</string>
+    <string name="qr_description">QR code for the sharing link</string>
+    <string name="share_security_note">Sharing stays on for 10 minutes or until you stop it. The link is a key: anyone on this network who has it can fetch these files while sharing is on. The connection is not encrypted.</string>
+</resources>

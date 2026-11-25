@@ -1,0 +1,10 @@
+# VidGrab Windows app dependencies (Python 3.10+)
+customtkinter>=5.2
+yt-dlp>=2024.1.1
+imageio-ffmpeg>=0.4.9
+qrcode[pil]>=7.4
+pillow>=10.0
+
+# Development / build only:
+pytest>=8.0
+pyinstaller>=6.0
