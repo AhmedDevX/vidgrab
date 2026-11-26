@@ -1,76 +1,443 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <LinearLayout
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ============================ DOWNLOAD ============================ -->
+        <ScrollView
+            android:id="@+id/pageDownload"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="16dp"
+                    app:cardUseCompatPadding="true">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/url_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/urlInput"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textUri"
+                                android:textDirection="ltr"
+                                android:autofillHints=""
+                                android:importantForAccessibility="yes" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Button
+                            android:id="@+id/fetchButton"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/fetch_info" />
+
+                        <TextView
+                            android:id="@+id/infoText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:textIsSelectable="true" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="16dp"
+                    app:cardUseCompatPadding="true">
+
+                    <RadioGroup
+                        android:id="@+id/qualityGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="12dp" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <Button
+                    android:id="@+id/downloadButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/download" />
+
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:max="100" />
+
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textIsSelectable="true" />
+
+                <Button
+                    android:id="@+id/updateEngineButton"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/update_engine" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ============================== SEND ============================== -->
+        <ScrollView
+            android:id="@+id/pageSend"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="16dp"
+                    app:cardUseCompatPadding="true">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/send_title"
+                            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/send_hint"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                        <Button
+                            android:id="@+id/pickFilesButton"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/choose_files" />
+
+                        <TextView
+                            android:id="@+id/filesLabel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/no_files"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/devicesHint"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/no_devices"
+                                android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                            <Button
+                                android:id="@+id/refreshDevicesButton"
+                                style="?attr/materialButtonOutlinedStyle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/refresh" />
+                        </LinearLayout>
+
+                        <ListView
+                            android:id="@+id/deviceList"
+                            android:layout_width="match_parent"
+                            android:layout_height="160dp"
+                            android:layout_marginTop="4dp"
+                            android:choiceMode="singleChoice" />
+
+                        <Button
+                            android:id="@+id/pairSendButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/pair_and_send" />
+
+                        <TextView
+                            android:id="@+id/sendStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="16dp"
+                    app:cardUseCompatPadding="true">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/fallback_title"
+                            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                        <Button
+                            android:id="@+id/openShareButton"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/fallback_open" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/share_security_note"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ============================= RECEIVE ============================= -->
+        <ScrollView
+            android:id="@+id/pageReceive"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="16dp"
+                    app:cardUseCompatPadding="true">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/receive_title"
+                            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                        <Button
+                            android:id="@+id/receiveButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/receive_start" />
+
+                        <TextView
+                            android:id="@+id/receiveStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/receive_idle"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="16dp"
+                    app:cardUseCompatPadding="true">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/pairing_title"
+                            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/identity_hint"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                        <TextView
+                            android:id="@+id/fingerprintText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fontFamily="monospace"
+                            android:textIsSelectable="true"
+                            android:textDirection="ltr" />
+
+                        <ImageView
+                            android:id="@+id/receiveQr"
+                            android:layout_width="180dp"
+                            android:layout_height="180dp"
+                            android:layout_marginTop="8dp"
+                            android:contentDescription="@string/qr_description" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ============================= SETTINGS ============================= -->
+        <ScrollView
+            android:id="@+id/pageSettings"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="16dp"
+                    app:cardUseCompatPadding="true">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/theme"
+                            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                        <RadioGroup
+                            android:id="@+id/themeGroup"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp">
+
+                            <RadioButton
+                                android:id="@+id/themeLight"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/theme_light" />
+
+                            <RadioButton
+                                android:id="@+id/themeDark"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/theme_dark" />
+
+                            <RadioButton
+                                android:id="@+id/themeGlass"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/theme_glass" />
+                        </RadioGroup>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/language"
+                            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                        <RadioGroup
+                            android:id="@+id/langGroup"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp">
+
+                            <RadioButton
+                                android:id="@+id/langEn"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="English" />
+
+                            <RadioButton
+                                android:id="@+id/langAr"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="العربية" />
+                        </RadioGroup>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/open_downloads"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
-
-        <EditText
-            android:id="@+id/urlInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/url_hint"
-            android:inputType="textUri"
-            android:autofillHints=""
-            android:importantForAccessibility="yes" />
-
-        <Button
-            android:id="@+id/fetchButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/fetch_info" />
-
-        <TextView
-            android:id="@+id/infoText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
-
-        <RadioGroup
-            android:id="@+id/qualityGroup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
-
-        <Button
-            android:id="@+id/downloadButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/download" />
-
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:max="100" />
-
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
-
-        <Button
-            android:id="@+id/shareButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/send_files" />
-
-        <Button
-            android:id="@+id/updateEngineButton"
-            style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/update_engine" />
-    </LinearLayout>
-</ScrollView>
+        app:menu="@menu/bottom_nav" />
+</LinearLayout>

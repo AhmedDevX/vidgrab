@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#1565C0</color>
+    <color name="ic_launcher_background">#5E5CE6</color>
+
+    <!-- Brand accent (indigo), shared across themes -->
+    <color name="accent">#6C5CE7</color>
+    <color name="accent_dark">#8E8CFF</color>
+
+    <!-- Glass theme palette (violet-indigo, distinct from plain dark) -->
+    <color name="glass_bg">#FF17172B</color>
+    <color name="glass_surface">#FF25254A</color>
+    <color name="glass_surface_alt">#FF30305C</color>
+    <color name="glass_on_surface">#FFF5F5FA</color>
+    <color name="glass_on_surface_sub">#FFABABC9</color>
+    <color name="glass_border">#FF4E4E86</color>
+    <color name="glass_on_primary">#FF1B1B30</color>
 </resources>

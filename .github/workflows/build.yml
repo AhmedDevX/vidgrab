@@ -31,8 +31,8 @@ jobs:
           cd android
           ./gradlew :app:assembleDebug --console=plain
 
-      - name: Fetch Android ffmpeg corresponding source (FFmpeg n5.1)
-        run: curl -fL https://ffmpeg.org/releases/ffmpeg-5.1.tar.xz -o ffmpeg-5.1-src.tar.xz
+      - name: Fetch Android ffmpeg corresponding source (FFmpeg n7.1.1)
+        run: curl -fL https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz -o ffmpeg-7.1.1-src.tar.xz
 
       - name: Bundle license notices
         run: zip -r VidGrab-NOTICES.zip LICENSE docs/CREDITS.md docs/licenses
@@ -49,7 +49,7 @@ jobs:
           name: android-notices-and-source
           path: |
             VidGrab-NOTICES.zip
-            ffmpeg-5.1-src.tar.xz
+            ffmpeg-7.1.1-src.tar.xz
 
   windows:
     runs-on: windows-latest
@@ -72,6 +72,7 @@ jobs:
         run: |
           cd windows
           python -m pytest test_core.py test_share.py
+          python test_transfer.py
 
       - name: Build VidGrab.exe
         run: |
@@ -88,8 +89,8 @@ jobs:
       - name: Store exe as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
-          path: windows/dist/VidGrab.exe
+          name: windows-app-dir
+          path: windows/dist/VidGrab/
 
       - name: Store notices + Windows ffmpeg source as workflow artifacts
         uses: actions/upload-artifact@v4

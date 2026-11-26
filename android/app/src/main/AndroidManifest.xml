@@ -14,7 +14,10 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.VidGrab"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:allowBackup="false">
+        <!-- allowBackup=false: the device identity key and fingerprint pins
+             must never leave this device via cloud/device-transfer backup. -->
 
         <activity
             android:name=".MainActivity"
@@ -43,6 +46,11 @@
 
         <service
             android:name=".ShareServerService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".ReceiveService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
     </application>

@@ -27,6 +27,32 @@ android {
         }
     }
 
+    // youtubedl-android ships its native libs compressed (lib*.zip.so) and
+    // needs them extracted at install time (with extractNativeLibs=true).
+    packaging {
+        jniLibs.useLegacyPackaging = true
+        resources {
+            // Bouncy Castle jars are signed and multi-release: drop the
+            // colliding signature/metadata files (they are not needed at
+            // runtime on Android, which never verifies JAR signatures).
+            excludes += setOf(
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+                "META-INF/*.SF",
+                "META-INF/*.RSA",
+                "META-INF/*.DSA",
+                "META-INF/INDEX.LIST"
+            )
+            // All three Bouncy Castle jars carry the same license text;
+            // keep one copy inside the APK instead of dropping them all.
+            pickFirsts += setOf("META-INF/LICENSE.md", "META-INF/NOTICE.md")
+        }
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -52,12 +78,27 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // Download engine: yt-dlp + ffmpeg packaged for Android (GPL-3.0).
-    implementation("com.github.yausername.youtubedl-android:library:0.14.0")
-    implementation("com.github.yausername.youtubedl-android:ffmpeg:0.14.0")
+    // JunkFood02's maintained fork on Maven Central (used by Seal and YTDLnis):
+    // bundles Python 3.12 + ffmpeg 7.1.1 + QuickJS, so yt-dlp can stay current.
+    implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
 
     // Embedded HTTP server for the file-sharing feature (BSD-3-Clause).
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 
     // QR code generation for the sharing link (Apache-2.0).
-    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:core:3.5.4")
+
+    // Self-signed device identity certificates for the direct-transfer
+    // TLS server (Bouncy Castle License, MIT-style). javax.net.ssl handles
+    // TLS itself; BC is only used to BUILD the X.509 certificate, which the
+    // platform has no API for. Versions verified against repo1.maven.org.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.87")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.87")
+}
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
 }

@@ -20,23 +20,27 @@ Windows (bundled inside VidGrab.exe)
   The source archive is also produced as the CI artifact
   ffmpeg-2a571b6068-src.tar.gz next to the exe.
 
-Android (bundled inside the APK, via youtubedl-android 0.14.0)
---------------------------------------------------------------
-- Binary: FFmpeg 5.1 (n5.1) shared libraries, taken from the Termux
-  ffmpeg package. Byte-level verified: all 8 arm64-v8a .so files in the
-  JitPack AAR com.github.yausername.youtubedl-android:ffmpeg:0.14.0 are
-  SHA-256 identical to the binaries committed to youtubedl-android in
-  PR #186 "Bump ffmpeg from 4.2.1 to 5.1" (commit a8a636e6b3,
-  2022-09-08), which sourced them from Termux. The Termux package recipe
-  at that time (termux-packages commit
-  3d6eb5967071598397434c4b5d103633f08be71d, packages/ffmpeg/build.sh)
-  declares TERMUX_PKG_VERSION=5.1 and TERMUX_PKG_LICENSE="GPL-3.0";
-  FFmpeg 5.1.1 was only released 2022-09-10, two days after the PR, so
-  the binaries are exactly FFmpeg 5.1 (n5.1).
-- Upstream library: https://github.com/yausername/youtubedl-android
-  (GPL-3.0)
-- Corresponding source: https://ffmpeg.org/releases/ffmpeg-5.1.tar.xz
-  (also produced as the CI artifact ffmpeg-5.1-src.tar.xz next to the
+Android (bundled inside the APK, via the youtubedl-android fork 0.18.1)
+----------------------------------------------------------------------
+- Binary: FFmpeg 7.1.1 (n7.1.1, libavcodec 61.19.101) shared libraries,
+  taken from the Termux ffmpeg package. Byte-level verified: the
+  arm64-v8a libffmpeg.zip.so inside the Maven Central AAR
+  io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1 is SHA-256
+  identical (4664a895283f9f31786be39b0c484c1f96631f02c7c7f9c70a4a4a2da324a092)
+  to the binary committed in yausername/youtubedl-android master at commit
+  f2280ae7d8 "Bump ffmpeg 7.1.1" (2025-09-27), which sourced it from
+  Termux. The Termux package recipe at that time (termux-packages commit
+  de5f604e60ba, packages/ffmpeg/build.sh) declares
+  TERMUX_PKG_VERSION="7.1.1" and TERMUX_PKG_LICENSE="GPL-3.0".
+- The embedded CPython is 3.12 (Termux build, PSF-2.0), also verified
+  byte-identical (SHA-256 7edecb6c9bd3a94456168d44911d8aea9f917bedef90c320a29500d92ac3eb62)
+  between the Maven Central library AAR and the upstream committed binary.
+- The engine also bundles QuickJS (MIT, Bellard) as the JavaScript runtime
+  yt-dlp needs for current sites; license text in QuickJS-MIT.txt.
+- Upstream library: https://github.com/JunkFood02/youtubedl-android
+  (GPL-3.0 fork of https://github.com/yausername/youtubedl-android)
+- Corresponding source: https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz
+  (also produced as the CI artifact ffmpeg-7.1.1-src.tar.xz next to the
   APKs) plus the Termux build recipe at the commit above.
 
 General ffmpeg licensing information: https://ffmpeg.org/legal.html

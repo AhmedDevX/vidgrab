@@ -1,17 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">VidGrab</string>
+
+    <string name="tab_download">Download</string>
+    <string name="tab_send">Send</string>
+    <string name="tab_receive">Receive</string>
+    <string name="tab_settings">Settings</string>
+
     <string name="url_hint">Paste a video link, or share one to this app</string>
     <string name="fetch_info">Fetch info</string>
     <string name="fetching">Fetching info...</string>
     <string name="download">Download</string>
     <string name="download_starting">Starting download...</string>
-    <string name="send_files">Send files to another device</string>
     <string name="update_engine">Update download engine</string>
-    <string name="choose_files">Choose files to share</string>
+    <string name="open_downloads">Downloads go to the VidGrab folder</string>
+
+    <string name="send_title">Send to a device</string>
+    <string name="send_hint">Devices running VidGrab on this Wi-Fi appear here.</string>
+    <string name="choose_files">Choose files to send</string>
     <string name="no_files">No files selected</string>
+    <string name="no_devices">No devices found yet</string>
+    <string name="refresh">Refresh</string>
+    <string name="pair_and_send">Pair and send</string>
+    <string name="pick_first">Pick files first</string>
+    <string name="pick_device">Pick a device first</string>
+    <string name="waiting_recipient">Waiting for recipient...</string>
+    <string name="sending">Sending...</string>
+    <string name="sent_ok">Sent: %1$s</string>
+    <string name="send_failed">Send failed: %1$s</string>
+
+    <string name="pairing_title">Confirm the code</string>
+    <string name="pairing_instructions">Check that the screen of \"%1$s\" shows this exact code, then confirm here:</string>
+    <string name="code_matches">Codes match</string>
+    <string name="code_mismatch">They differ</string>
+    <string name="pair_failed">Pairing failed or was rejected</string>
+
+    <string name="receive_title">Receive on this device</string>
+    <string name="receive_start">Start receiving</string>
+    <string name="receive_stop">Stop receiving</string>
+    <string name="receive_idle">Receiving is off.</string>
+    <string name="receive_active">This device is visible as \"%1$s\" to VidGrab devices on this Wi-Fi.</string>
+    <string name="receive_done">Received: %1$s</string>
+    <string name="receive_failed">Receive failed: %1$s</string>
+    <string name="identity_hint">This is your device\'s fingerprint. A sender checks that their screen shows this exact code before the first transfer. It is public identity, not a password.</string>
+
+    <string name="offer_notification_title">Incoming file</string>
+    <string name="offer_notification_text">%1$s (unverified) wants to send: %2$s (%3$s)</string>
+    <string name="accept">Accept</string>
+    <string name="decline">Decline</string>
+    <string name="stop">Stop</string>
+    <string name="receive_notification_title">VidGrab receiving as %1$s</string>
+    <string name="receive_notification_text">Visible on this Wi-Fi. Tap Stop to hide.</string>
+
     <string name="start_sharing">Start sharing</string>
     <string name="stop_sharing">Stop sharing</string>
-    <string name="qr_description">QR code for the sharing link</string>
-    <string name="share_security_note">Sharing stays on for 10 minutes or until you stop it. The link is a key: anyone on this network who has it can fetch these files while sharing is on. The connection is not encrypted.</string>
+    <string name="share_link">Open on the other device (same Wi-Fi):</string>
+    <string name="fallback_title">Browser fallback (no app needed)</string>
+    <string name="fallback_open">Open browser sharing</string>
+    <string name="share_security_note">The browser fallback is a separate, optional flow. Sharing stays on for 10 minutes or until you stop it. The link is a key: anyone on this network who has it can fetch these files while sharing is on. This fallback connection is not encrypted; direct device transfer above is.</string>
+
+    <string name="theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_glass">Glass</string>
+    <string name="language">Language</string>
+    <string name="qr_description">QR code with this device\'s public connection identity</string>
 </resources>

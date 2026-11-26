@@ -3,25 +3,28 @@
 Free, open-source, ad-free video downloader + local file sender, for **Android** and **Windows**.
 
 - **Download videos:** share a video link to the app (or paste it), pick a quality (1080p / 720p / ... / MP3 audio), download with progress. Powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp), which supports [hundreds of sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
-- **Send files to any nearby device:** pick files on your phone or PC, get a QR code + link, open it in the browser of any device on the same Wi-Fi (iPhone, Android, Mac, Windows, Linux) and download. No installs, no cables, no accounts, no cloud.
+- **Send files directly between devices:** devices running VidGrab on the same Wi-Fi find each other automatically; pick a device, confirm the fingerprint code against its screen, the recipient accepts, and the file moves over an authenticated, encrypted (TLS) connection. No cables, no accounts, no cloud.
+- **Browser fallback:** for devices without the app (iPhone, Mac, Linux, anything with a browser), an optional token-link + QR flow remains - explicitly started, clearly marked unencrypted.
+- **Your look, your language:** Light, Dark and Glass themes, in English or Arabic (full RTL), on both apps.
 
 ## Honest scope (read this)
 
-This is a **first working version**, not a finished product.
-
 - Site coverage = yt-dlp's coverage. It is large and growing, but no downloader supports *every* video on *every* site. Some sites block downloads or change often; updating the engine (in-app button / `pip install -U yt-dlp`) fixes most breakage.
 - **DRM-protected content (paid streaming services, encrypted video) is not supported and will not be added.**
-- **File sharing is a scoped first version:** the sending device runs a small local server and the receiver uses any browser on the same Wi-Fi. There are no native receiver apps yet, no automatic device discovery, and no internet/off-Wi-Fi transfer (a phone hotspot works as a manual fallback).
-- The sharing connection is **plain HTTP on the local network: it is not encrypted**. The link contains a random session token and sharing stops after 10 minutes or when you stop it, but treat the link like a key: anyone on the same network who has it can fetch the shared files while sharing is on.
-- On **Windows**, v1 receives links by paste or optional clipboard watch. A native Windows share-menu entry needs MSIX packaging and is on the roadmap.
+- **Native transfer is same-Wi-Fi only** (Windows and Android; a phone hotspot works as a manual fallback). First trust between two devices is the full-fingerprint comparison on both screens - it is only as strong as actually comparing it. The protocol has not been independently audited; see [docs/PROTOCOL.md](docs/PROTOCOL.md).
+- The optional **browser fallback is plain HTTP on the local network: it is not encrypted**. The link contains a random session token and sharing stops after 10 minutes or when you stop it, but treat the link like a key.
 - Download speed depends on the source site and your connection; no fixed speed is promised.
+
+## Devices can't see each other?
+
+Many routers block devices on the same Wi-Fi from talking to each other ("AP isolation" / "client isolation"). Fix it in the router admin page (usually `192.168.1.1`, credentials on the router sticker): wireless/WLAN settings → disable **AP/Client Isolation** → save. Don't use a Guest network - it always isolates. If you can't change the router, turn on the phone's hotspot, connect the other device to it, and transfer over that.
 
 ## Repository layout
 
 ```
 vidgrab/
-├── android/     Kotlin Android app (share target, quality picker, downloader, file sender)
-├── windows/     Python desktop app (downloader + file sender, customtkinter UI)
+├── android/     Kotlin Android app (share target, downloader, native transfer)
+├── windows/     Python desktop app (downloader + native transfer, PySide6/Qt UI)
 ├── docs/        Build, extend and protocol docs
 └── LICENSE      GPL-3.0
 ```
@@ -37,7 +40,7 @@ cd android
 
 Or open `android/` in Android Studio and press Run. Install the APK on your phone, then share any video link from any app and choose **VidGrab**.
 
-The download engine ([youtubedl-android](https://github.com/yausername/youtubedl-android)) is pinned to `0.14.0` because newer releases (0.15+) currently fail to build on JitPack, the repository that serves them. Use the in-app **Update download engine** button to refresh yt-dlp itself to the latest version; if you want a newer library base, check the JitPack build status and bump the version in `android/app/build.gradle.kts`.
+The download engine is the actively maintained [JunkFood02 fork of youtubedl-android](https://github.com/JunkFood02/youtubedl-android) `0.18.1` from Maven Central (the original's newer releases fail to build on JitPack). It bundles Python 3.12 and ffmpeg 7.1.1. Use the in-app **Update download engine** button to refresh yt-dlp itself to the latest version; to bump the engine base, edit `android/app/build.gradle.kts`.
 
 ## Windows
 
@@ -98,9 +101,9 @@ Notes:
 
 ## Roadmap (not built yet)
 
-- Native receiver mode (app-to-app direct transfer, no browser needed)
-- Automatic device discovery (mDNS / Nearby Connections)
 - Windows share-menu integration (MSIX packaging)
+- QR-code camera scanning for first trust (today: compare the fingerprint text)
+- Streaming sender (today the sending side buffers the file in memory)
 - Download queue, pause/resume, per-site settings
 - Signed release builds
 
@@ -129,6 +132,10 @@ Credits and dependency licenses: [docs/CREDITS.md](docs/CREDITS.md). This tool i
 - من التطبيق (موبايل أو كمبيوتر): "Send files" ← اختار الملفات ← "Start sharing" ← هيطلعلك QR ولينك.
 - على الجهاز التاني (نفس الواي فاي): افتح اللينك أو امسح الـQR في المتصفح العادي وحمّل. من غير أي برامج على الجهاز المستقبِل.
 - اللينك شغال 10 دقايق بس أو لحد ما توقف المشاركة، وأي حد على نفس الشبكة معاه اللينك يقدر يحمّل الملفات دي وقتها، فاعتبر اللينك زي المفتاح.
+
+**الأجهزة مش شايفة بعضها على الواي فاي؟**
+- رواتر كتير بتعزل الأجهزة عن بعضها (خاصية AP/Client Isolation). من صفحة إعدادات الراوتر (غالباً `192.168.1.1` وبيانات الدخول على الاستيكر تحت الراوتر): إعدادات الواي فاي ← شيل تفعيل **AP/Client Isolation** ← احفظ. ومتستخدمش شبكة الضيوف (Guest) لأنها معزولة دايماً.
+- لو مش قادر تغيّر إعدادات الراوتر: شغّل هوتسبوت الموبايل ووصّل الجهاز التاني عليه وانقل من خلاله.
 
 **نسخ جاهزة للتحميل (بناء على جيت هاب):**
 1. ارفع المشروع على جيت هاب زي قسم "Publish to your own GitHub" اللي فوق.

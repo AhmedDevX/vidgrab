@@ -8,8 +8,12 @@ for merging video+audio and for MP3 extraction.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
+import time
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
@@ -93,6 +97,114 @@ def probe(url: str) -> VideoInfo:
         webpage_url=info.get("webpage_url") or url,
         thumbnail=info.get("thumbnail"),
     )
+
+
+def _direct_file_name(url: str, content_disposition: Optional[str]) -> str:
+    """Best-effort filename for a direct link: Content-Disposition first,
+    then the URL path basename; always reduced to a safe basename."""
+    name = ""
+    if content_disposition:
+        m = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", content_disposition)
+        if m:
+            name = m.group(1).strip()
+    if not name:
+        name = os.path.basename(urllib.parse.urlparse(url).path)
+    name = urllib.parse.unquote(name)
+    name = name.split("/")[-1].split("\\")[-1]
+    name = re.sub(r'[<>:"|?*\x00-\x1f]', "_", name).strip().rstrip(". ")
+    return name or "download"
+
+
+def probe_direct(url: str) -> Optional[dict]:
+    """Detect a direct file link (image, archive, document, any file).
+
+    Returns {filename, size, content_type} when the URL serves a file, or
+    None when it serves an HTML page or cannot be probed. Some servers
+    reject HEAD requests; those links simply fall through as not-direct.
+    Only plain HTTP(S) file links - protected/DRM media is out of scope.
+    """
+    req = urllib.request.Request(url, method="HEAD",
+                                 headers={"User-Agent": "VidGrab/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if not ctype or ctype.startswith("text/html"):
+                return None
+            try:
+                size = int(resp.headers.get("Content-Length") or -1)
+            except ValueError:
+                size = -1
+            return {
+                "filename": _direct_file_name(resp.geturl(), resp.headers.get("Content-Disposition")),
+                "size": size,
+                "content_type": ctype,
+                "url": resp.geturl(),
+            }
+    except Exception:
+        return None
+
+
+def download_direct(
+    url: str,
+    out_dir: str,
+    progress_cb: Optional[Callable[[Progress], None]] = None,
+) -> str:
+    """Stream a direct file link into out_dir (1 MiB chunks, .part file
+    renamed into place only after full receipt). Returns the saved path."""
+    os.makedirs(out_dir, exist_ok=True)
+    req = urllib.request.Request(url, headers={"User-Agent": "VidGrab/1.0"})
+    state = Progress(status="downloading")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        try:
+            total = int(resp.headers.get("Content-Length") or 0)
+        except ValueError:
+            total = 0
+        name = _direct_file_name(resp.geturl(), resp.headers.get("Content-Disposition"))
+        stem, ext = os.path.splitext(name)
+        target = os.path.join(out_dir, name)
+        n = 1
+        while os.path.exists(target):
+            n += 1
+            target = os.path.join(out_dir, f"{stem} ({n}){ext}")
+        tmp = target + ".part"
+        received = 0
+        started = time.monotonic()
+        try:
+            with open(tmp, "wb") as fh:
+                while True:
+                    chunk = resp.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    fh.write(chunk)
+                    received += len(chunk)
+                    elapsed = max(time.monotonic() - started, 1e-3)
+                    speed = received / elapsed
+                    state.percent = (received / total * 100.0) if total else 0.0
+                    state.speed_bytes = speed
+                    state.eta_seconds = int(max((total - received) / max(speed, 1), 0)) if total else None
+                    state.filename = target
+                    if progress_cb:
+                        progress_cb(state)
+                fh.flush()
+                os.fsync(fh.fileno())
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+        if total and received != total:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise IOError(f"download incomplete ({received} != {total})")
+        os.replace(tmp, target)
+    state.status = "finished"
+    state.percent = 100.0
+    if progress_cb:
+        progress_cb(state)
+    return target
 
 
 def download(

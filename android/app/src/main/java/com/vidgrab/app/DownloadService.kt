@@ -61,6 +61,7 @@ class DownloadService : Service() {
 
             val tmpDir = File(cacheDir, "dl").apply { deleteRecursively(); mkdirs() }
             val request = YoutubeDLRequest(url)
+            Engine.jsRuntimeOption(this)?.let { request.addOption(it.first, it.second) }
             request.addOption("-f", format)
             request.addOption("-o", "${tmpDir.absolutePath}/%(title)s.%(ext)s")
             if (audioOnly) {
