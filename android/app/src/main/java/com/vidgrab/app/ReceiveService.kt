@@ -3,10 +3,12 @@ package com.vidgrab.app
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.os.PowerManager
+import android.provider.MediaStore
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,11 @@ object ReceiveBus {
     /** The offer currently awaiting the user's decision, if any. */
     var pendingRespond: ((Boolean) -> Unit)? = null
     var pendingOfferText: String? = null
+
+    /** Non-null while an offer awaits a decision; the receive page shows an
+     *  in-app accept/decline dialog from this (the notification covers the
+     *  backgrounded case). */
+    val pendingOffer = MutableStateFlow<String?>(null)
 }
 
 /**
@@ -46,6 +53,7 @@ class ReceiveService : Service() {
         const val ACTION_DECLINE = "com.vidgrab.app.OFFER_DECLINE"
         private const val NOTIF_ID = 3
         private const val OFFER_NOTIF_ID = 4
+        private const val DONE_NOTIF_ID = 5
 
         fun start(context: Context) {
             context.startForegroundService(
@@ -63,6 +71,8 @@ class ReceiveService : Service() {
     private var nsd: Nsd? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private lateinit var identity: Identity
+    private var lastRxFile = ""
+    private var rxStartNanos = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -92,20 +102,27 @@ class ReceiveService : Service() {
                 ) = onOffer(senderName, filename, size, respond)
 
                 override fun onProgress(filename: String, received: Long, total: Long) {
+                    if (filename != lastRxFile) {
+                        lastRxFile = filename
+                        rxStartNanos = System.nanoTime()
+                    }
                     ReceiveBus.state.value = ReceiveBus.state.value.copy(
-                        status = "$filename ${received * 100 / total.coerceAtLeast(1)}%")
+                        status = ProgressText.line(
+                            this@ReceiveService, filename, received, total, rxStartNanos))
                 }
 
                 override fun onDone(filename: String, savedPath: String) {
                     ReceiveBus.state.value = ReceiveBus.state.value.copy(
-                        status = getString(R.string.receive_done, filename))
+                        status = getString(R.string.receive_done, filename, savedPath))
+                    doneNotification(filename, savedPath)
                 }
 
                 override fun onFailed(filename: String, reason: String) {
                     ReceiveBus.state.value = ReceiveBus.state.value.copy(
                         status = getString(R.string.receive_failed, reason))
+                    failedNotification(filename)
                 }
-            })
+            }, openTarget = { name, _ -> downloadsTarget(name) })
             srv.makeSecure(identity.serverSocketFactory())
             srv.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
             server = srv
@@ -133,6 +150,7 @@ class ReceiveService : Service() {
         ReceiveBus.pendingRespond = respond
         ReceiveBus.pendingOfferText =
             getString(R.string.offer_notification_text, senderName, filename, mb)
+        ReceiveBus.pendingOffer.value = ReceiveBus.pendingOfferText
         ReceiveBus.state.value = ReceiveBus.state.value.copy(
             status = ReceiveBus.pendingOfferText)
         Notifs.ensureChannel(this)
@@ -161,8 +179,102 @@ class ReceiveService : Service() {
         ReceiveBus.pendingRespond?.invoke(accepted)
         ReceiveBus.pendingRespond = null
         ReceiveBus.pendingOfferText = null
+        ReceiveBus.pendingOffer.value = null
         val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
         nm.cancel(OFFER_NOTIF_ID)
+    }
+
+    /** Stream uploads straight into a PENDING public Downloads/VidGrab
+     *  entry: invisible until committed, deleted on abort, and no second
+     *  copy of the file is ever needed (matters for multi-GB transfers).
+     *  Falls back to app-private storage if MediaStore is unavailable. */
+    private fun downloadsTarget(name: String): StoreTarget {
+        try {
+            val resolver = contentResolver
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, name)
+                put(MediaStore.Downloads.RELATIVE_PATH, "Download/VidGrab")
+                put(MediaStore.Downloads.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(
+                MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                values) ?: throw java.io.IOException("insert failed")
+            return object : StoreTarget {
+                override fun open(): java.io.OutputStream =
+                    resolver.openOutputStream(uri)
+                        ?: throw java.io.IOException("write failed")
+                override fun commit(): String {
+                    val done = ContentValues().apply {
+                        put(MediaStore.Downloads.IS_PENDING, 0)
+                    }
+                    resolver.update(uri, done, null, null)
+                    val realName = resolver.query(
+                        uri, arrayOf(MediaStore.Downloads.DISPLAY_NAME),
+                        null, null, null
+                    )?.use { c -> if (c.moveToFirst()) c.getString(0) else null } ?: name
+                    return "Download/VidGrab/$realName"
+                }
+                override fun abort() { resolver.delete(uri, null, null) }
+            }
+        } catch (e: Exception) {
+            // MediaStore unavailable: keep the file in app-private storage.
+            val dir = receiveDir()
+            val tmp = File(dir, ".vidgrab-part-fallback")
+            val target = uniqueName(dir, name)
+            return object : StoreTarget {
+                override fun open(): java.io.OutputStream = java.io.FileOutputStream(tmp)
+                override fun commit(): String {
+                    if (!tmp.renameTo(target)) {
+                        tmp.copyTo(target, overwrite = false)
+                        tmp.delete()
+                    }
+                    return target.absolutePath
+                }
+                override fun abort() { tmp.delete() }
+            }
+        }
+    }
+
+    private fun uniqueName(dir: File, name: String): File {
+        var target = File(dir, name)
+        val stem = name.substringBeforeLast('.')
+        val ext = if (name.contains('.')) ".${name.substringAfterLast('.')}" else ""
+        var n = 1
+        while (target.exists()) {
+            n += 1
+            target = File(dir, "$stem ($n)$ext")
+        }
+        return target
+    }
+
+    private fun doneNotification(filename: String, savedPath: String) {
+        Notifs.ensureChannel(this)
+        val openApp = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val notif = Notifs.builder(this)
+            .setContentTitle(getString(R.string.receive_done_notif_title))
+            .setContentText(getString(R.string.receive_done_notif_text, filename, savedPath))
+            .setContentIntent(openApp)
+            .setAutoCancel(true)
+            .build()
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        nm.notify(DONE_NOTIF_ID, notif)
+    }
+
+    private fun failedNotification(filename: String) {
+        Notifs.ensureChannel(this)
+        val openApp = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val notif = Notifs.builder(this)
+            .setContentTitle(getString(R.string.receive_failed_notif_title))
+            .setContentText(filename)
+            .setContentIntent(openApp)
+            .setAutoCancel(true)
+            .build()
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        nm.notify(DONE_NOTIF_ID, notif)
     }
 
     private fun ongoingNotification(name: String): Notification {

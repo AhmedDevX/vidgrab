@@ -69,3 +69,29 @@ def test_download_direct_video(tmp_path):
     assert os.path.getsize(path) > 10_000
     statuses = {s for s, _ in events}
     assert "finished" in statuses
+
+
+def test_parse_search_entries():
+    info = {"entries": [
+        {"id": "abc", "title": "One", "channel": "Ch", "duration": 125,
+         "url": "https://www.youtube.com/watch?v=abc"},
+        {"id": "def", "title": "Two", "uploader": "Up", "duration": None, "url": "def"},
+        {"id": None, "title": "bad"},
+        None,
+    ]}
+    r = core.parse_search_entries(info)
+    assert [x.video_id for x in r] == ["abc", "def"]
+    assert r[0].channel == "Ch" and r[0].duration_seconds == 125
+    assert r[1].channel == "Up" and r[1].duration_seconds is None
+    assert r[1].url == "https://www.youtube.com/watch?v=def"
+    assert core.parse_search_entries({}) == []
+
+
+def test_format_duration():
+    assert core.format_duration(125) == "2:05"
+    assert core.format_duration(3725) == "1:02:05"
+    assert core.format_duration(None) == ""
+
+
+def test_search_empty_query():
+    assert core.search("   ") == []

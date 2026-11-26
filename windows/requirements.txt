@@ -1,5 +1,9 @@
-# VidGrab Windows app dependencies (Python 3.10+)
-customtkinter>=5.2
+# VidGrab Windows app dependencies (tested target: Python 3.12)
+# UI + transfer (new)
+PySide6-Essentials>=6.6
+zeroconf>=0.131
+cryptography>=42.0
+# Downloader + sharing
 yt-dlp>=2024.1.1
 imageio-ffmpeg>=0.4.9
 qrcode[pil]>=7.4

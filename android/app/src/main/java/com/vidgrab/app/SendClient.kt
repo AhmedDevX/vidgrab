@@ -124,6 +124,7 @@ class SendClient(
      *  memory is one chunk regardless of file size. If the source size
      *  changes mid-send the connection is desynced: fail and close. */
     private fun requestStream(method: String, path: String, size: Long,
+                              onProgress: ((Long, Long) -> Unit)?,
                               openStream: () -> InputStream): JSONObject {
         if (!trusted) throw TransferException("unverified connection")
         val out = output ?: throw TransferException("not connected")
@@ -138,6 +139,7 @@ class SendClient(
                 if (n < 0) break
                 out.write(buf, 0, n)
                 sent += n
+                onProgress?.invoke(sent, size)
             }
         }
         out.flush()
@@ -196,6 +198,7 @@ class SendClient(
      *  the name it was saved as. size must match what openStream yields. */
     fun send(filename: String, size: Long,
              progress: ((String) -> Unit)? = null,
+             onProgress: ((Long, Long) -> Unit)? = null,
              openStream: () -> InputStream): String {
         progress?.invoke("waiting for recipient...")
         val offerResp = request("POST", "/v1/offer", JSONObject()
@@ -219,7 +222,7 @@ class SendClient(
         if (token == null) throw TransferException("no answer from recipient")
 
         progress?.invoke("sending...")
-        val resp = requestStream("POST", "/v1/upload/$token", size, openStream)
+        val resp = requestStream("POST", "/v1/upload/$token", size, onProgress, openStream)
         return resp.optString("saved_as", filename)
     }
 

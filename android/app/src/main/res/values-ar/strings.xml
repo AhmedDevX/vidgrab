@@ -40,12 +40,20 @@
     <string name="receive_stop">إيقاف الاستلام</string>
     <string name="receive_idle">الاستلام متوقف.</string>
     <string name="receive_active">هذا الجهاز ظاهر باسم \"%1$s\" لأجهزة فيدجراب على نفس الواي فاي.</string>
-    <string name="receive_done">تم الاستلام: %1$s</string>
+    <string name="receive_done">تم الاستلام: %1$s (اتحفظ في %2$s)</string>
     <string name="receive_failed">فشل الاستلام: %1$s</string>
     <string name="identity_hint">هذه بصمة جهازك. يتحقق المُرسل أن شاشته تعرض هذا الرمز بالضبط قبل أول نقل. هذه هوية علنية وليست كلمة سر.</string>
 
     <string name="offer_notification_title">ملف وارد</string>
-    <string name="offer_notification_text">%1$s (غير موثّق) يريد إرسال: %2$s (%3$s)</string>
+    <string name="offer_notification_text">%1$s (غير موثّق) يريد إرسال: ⁦%2$s⁩ (%3$s)</string>
+    <string name="receive_done_notif_title">تم استلام الملف</string>
+    <string name="receive_done_notif_text">%1$s اتحفظ في %2$s</string>
+    <string name="receive_failed_notif_title">فشل استلام الملف</string>
+    <string name="transfer_progress">⁦%1$s⁩ · %2$d%% · %3$s · متبقي ~%4$s</string>
+    <string name="speed_mbps">%1$.1f م.ب/ث</string>
+    <string name="speed_kbps">%1$.0f ك.ب/ث</string>
+    <string name="direct_file">⁦%1$s⁩ (ملف مباشر، %2$s)</string>
+    <string name="size_unknown">حجم غير معروف</string>
     <string name="accept">قبول</string>
     <string name="decline">رفض</string>
     <string name="stop">إيقاف</string>
@@ -65,4 +73,19 @@
     <string name="theme_glass">زجاجي</string>
     <string name="language">اللغة</string>
     <string name="qr_description">رمز QR بهوية الاتصال العلنية لهذا الجهاز</string>
+
+    <string name="tab_browse">تصفح</string>
+    <string name="search_hint">ابحث في يوتيوب</string>
+    <string name="search_button">بحث</string>
+    <string name="searching">جاري البحث...</string>
+    <string name="search_none">لا توجد نتائج.</string>
+    <string name="search_failed">فشل البحث: %1$s</string>
+    <string name="browse_hint">ابحث أو اكتب عنوان موقع</string>
+    <string name="browse_note">مانع الإعلانات يخفي مواقع الإعلانات المعروفة ويمنع النوافذ المنبثقة التي تفتح بدون لمسة. هو بسيط وسيفوّت بعض الإعلانات.</string>
+    <string name="download_this_page">تحميل هذه الصفحة</string>
+    <string name="shield_on">الحماية تعمل (%1$d)</string>
+    <string name="shield_off">الحماية متوقفة</string>
+    <string name="file_download_title">تحميل هذا الملف؟</string>
+    <string name="file_download_msg">%1$s من %2$s</string>
+    <string name="download_unsupported">نوع التحميل هذا غير مدعوم</string>
 </resources>

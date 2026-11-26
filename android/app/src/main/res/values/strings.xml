@@ -40,12 +40,20 @@
     <string name="receive_stop">Stop receiving</string>
     <string name="receive_idle">Receiving is off.</string>
     <string name="receive_active">This device is visible as \"%1$s\" to VidGrab devices on this Wi-Fi.</string>
-    <string name="receive_done">Received: %1$s</string>
+    <string name="receive_done">Received: %1$s (saved to %2$s)</string>
     <string name="receive_failed">Receive failed: %1$s</string>
     <string name="identity_hint">This is your device\'s fingerprint. A sender checks that their screen shows this exact code before the first transfer. It is public identity, not a password.</string>
 
     <string name="offer_notification_title">Incoming file</string>
     <string name="offer_notification_text">%1$s (unverified) wants to send: %2$s (%3$s)</string>
+    <string name="receive_done_notif_title">File received</string>
+    <string name="receive_done_notif_text">%1$s saved to %2$s</string>
+    <string name="receive_failed_notif_title">Receive failed</string>
+    <string name="transfer_progress">%1$s · %2$d%% · %3$s · ~%4$s left</string>
+    <string name="speed_mbps">%1$.1f MB/s</string>
+    <string name="speed_kbps">%1$.0f KB/s</string>
+    <string name="direct_file">⁦%1$s⁩ (direct file, %2$s)</string>
+    <string name="size_unknown">unknown size</string>
     <string name="accept">Accept</string>
     <string name="decline">Decline</string>
     <string name="stop">Stop</string>
@@ -65,4 +73,19 @@
     <string name="theme_glass">Glass</string>
     <string name="language">Language</string>
     <string name="qr_description">QR code with this device\'s public connection identity</string>
+
+    <string name="tab_browse">Browse</string>
+    <string name="search_hint">Search YouTube</string>
+    <string name="search_button">Search</string>
+    <string name="searching">Searching...</string>
+    <string name="search_none">No results.</string>
+    <string name="search_failed">Search failed: %1$s</string>
+    <string name="browse_hint">Search or type a web address</string>
+    <string name="browse_note">Ad blocker hides known ad hosts and refuses pop-ups opened without a tap. It is basic and will miss some ads.</string>
+    <string name="download_this_page">Download this page</string>
+    <string name="shield_on">Shield on (%1$d)</string>
+    <string name="shield_off">Shield off</string>
+    <string name="file_download_title">Download this file?</string>
+    <string name="file_download_msg">%1$s from %2$s</string>
+    <string name="download_unsupported">This download type is not supported</string>
 </resources>

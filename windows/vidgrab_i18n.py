@@ -20,6 +20,12 @@ STRINGS = {
     "tab_send": {"en": "Send", "ar": "إرسال"},
     "tab_receive": {"en": "Receive", "ar": "استلام"},
     "tab_settings": {"en": "Settings", "ar": "الإعدادات"},
+    "search_placeholder": {"en": "Search YouTube", "ar": "ابحث في يوتيوب"},
+    "search": {"en": "Search", "ar": "بحث"},
+    "searching": {"en": "Searching...", "ar": "جاري البحث..."},
+    "search_none": {"en": "No results.", "ar": "لا توجد نتائج."},
+    "search_pick": {"en": "Pick a result to load it.", "ar": "اختر نتيجة لتحميل معلوماتها."},
+    "search_failed": {"en": "Search failed: {error}", "ar": "فشل البحث: {error}"},
 
     "url_placeholder": {"en": "Paste a video link here", "ar": "الصق رابط الفيديو هنا"},
     "fetch_info": {"en": "Fetch info", "ar": "جلب المعلومات"},

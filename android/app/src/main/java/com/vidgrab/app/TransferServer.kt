@@ -8,8 +8,27 @@ import java.security.SecureRandom
 import javax.net.ssl.SSLServerSocketFactory
 
 private const val OFFER_TTL_MILLIS = 60_000L
-private const val MAX_OFFER_BYTES = 32L * 1024 * 1024 * 1024 // 32 GiB per-file cap
+private const val MAX_OFFER_BYTES = 1024L * 1024 * 1024 * 1024 * 1024 // 1 TiB per-file cap
 private const val READ_CHUNK = 1024 * 1024
+
+/** Where a fully-accepted upload gets written. The stream opens before the
+ *  body arrives; commit makes the file visible under its real name, abort
+ *  leaves nothing behind. */
+interface StoreTarget {
+    fun open(): java.io.OutputStream
+    fun commit(): String // returns a human-readable saved location
+    fun abort()
+}
+
+/** Default target: stream to a temp name, rename into place on commit. */
+private class TempFileTarget(private val tmp: File, private val finalFile: File) : StoreTarget {
+    override fun open(): java.io.OutputStream = FileOutputStream(tmp)
+    override fun commit(): String {
+        if (!tmp.renameTo(finalFile)) throw java.io.IOException("could not save")
+        return finalFile.absolutePath
+    }
+    override fun abort() { tmp.delete() }
+}
 
 /** State of one pending/accepted offer. */
 private class Offer(
@@ -62,6 +81,12 @@ class TransferServer(
     private val receiveDir: File,
     private val ui: TransferUi,
     private val maxBytes: Long = MAX_OFFER_BYTES,
+    /** Where uploads stream to. Default: temp file renamed into receiveDir. */
+    private val openTarget: (String, Long) -> StoreTarget = { name, _ ->
+        TempFileTarget(
+            File(receiveDir, ".vidgrab-part-${randomToken(6)}"),
+            uniqueFile(receiveDir, name))
+    },
 ) : NanoHTTPD(port) {
 
     private val lock = Object()
@@ -198,11 +223,11 @@ class TransferServer(
             o.status = "failed"
             return json(400, JSONObject().put("error", "size mismatch"))
         }
-        val tmp = File(receiveDir, ".vidgrab-part-${randomToken(6)}")
+        val target = openTarget(o.filename, o.size)
         try {
             var received = 0L
             val buf = ByteArray(READ_CHUNK)
-            FileOutputStream(tmp).use { out ->
+            target.open().use { out ->
                 var remaining = length
                 while (remaining > 0) {
                     val n = session.inputStream.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
@@ -212,10 +237,10 @@ class TransferServer(
                     remaining -= n
                     ui.onProgress(o.filename, received, length)
                 }
-                out.fd.sync()
+                (out as? FileOutputStream)?.fd?.sync()
             }
         } catch (e: Exception) {
-            tmp.delete()
+            target.abort()
             o.status = "failed"
             ui.onFailed(o.filename, (e.message ?: "upload aborted").take(120))
             return json(400, JSONObject().put("error", "upload aborted"))
@@ -223,27 +248,29 @@ class TransferServer(
 
         // Full body arrived intact over the authenticated TLS channel; only
         // now does the file become visible under its real name.
-        val target = uniqueFile(receiveDir, o.filename)
-        if (!tmp.renameTo(target)) {
-            tmp.delete()
+        val savedLocation = try {
+            target.commit()
+        } catch (e: Exception) {
             o.status = "failed"
             ui.onFailed(o.filename, "could not save")
             return json(500, JSONObject().put("error", "could not save"))
         }
         o.status = "done"
-        ui.onDone(o.filename, target.absolutePath)
-        return json(200, JSONObject().put("saved_as", target.name))
+        ui.onDone(o.filename, savedLocation)
+        return json(200, JSONObject().put("saved_as", o.filename))
     }
 
-    private fun uniqueFile(dir: File, name: String): File {
-        var target = File(dir, name)
-        val stem = name.substringBeforeLast('.')
-        val ext = if (name.contains('.')) ".${name.substringAfterLast('.')}" else ""
-        var n = 1
-        while (target.exists()) {
-            n += 1
-            target = File(dir, "$stem ($n)$ext")
+    companion object {
+        private fun uniqueFile(dir: File, name: String): File {
+            var target = File(dir, name)
+            val stem = name.substringBeforeLast('.')
+            val ext = if (name.contains('.')) ".${name.substringAfterLast('.')}" else ""
+            var n = 1
+            while (target.exists()) {
+                n += 1
+                target = File(dir, "$stem ($n)$ext")
+            }
+            return target
         }
-        return target
     }
 }

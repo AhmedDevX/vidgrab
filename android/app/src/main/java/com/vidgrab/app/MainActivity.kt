@@ -63,6 +63,9 @@ class MainActivity : AppCompatActivity() {
     private var devices = listOf<DiscoveredDevice>()
     private var pickedUris = listOf<Uri>()
     private var receiving = false
+    private var offerDialog: AlertDialog? = null
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var directUrl: String? = null
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -100,9 +103,12 @@ class MainActivity : AppCompatActivity() {
         }
         qualityGroup.check(0)
 
+        setupSearch()
+        setupBrowser()
         findViewById<Button>(R.id.fetchButton).setOnClickListener { fetchInfo() }
         findViewById<Button>(R.id.downloadButton).setOnClickListener { startDownload() }
         findViewById<Button>(R.id.updateEngineButton).setOnClickListener { updateEngine() }
+        refreshEngineVersion()
         findViewById<Button>(R.id.pickFilesButton).setOnClickListener {
             pickFiles.launch(arrayOf("*/*"))
         }
@@ -124,6 +130,16 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             ReceiveBus.state.collect { s -> renderReceive(s) }
         }
+        lifecycleScope.launch {
+            ReceiveBus.pendingOffer.collect { text ->
+                if (text != null) {
+                    if (offerDialog?.isShowing != true) showOfferDialog(text)
+                } else {
+                    offerDialog?.dismiss()
+                    offerDialog = null
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -131,7 +147,122 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
     }
 
+    private var browser: BrowserPage? = null
+
+    private fun setupBrowser() {
+        val b = BrowserPage(
+            this,
+            onDownloadPage = { url ->
+                urlInput.setText(url)
+                findViewById<BottomNavigationView>(R.id.bottomNav).selectedItemId = R.id.nav_download
+                fetchInfo()
+            },
+            onFileDownload = { req -> startFileDownload(req) },
+        )
+        b.build()
+        findViewById<android.widget.FrameLayout>(R.id.pageBrowse).addView(b.root)
+        browser = b
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun onBackPressed() {
+        val onBrowse = findViewById<View>(R.id.pageBrowse).visibility == View.VISIBLE
+        if (onBrowse && browser?.onBack() == true) return
+        super.onBackPressed()
+    }
+
+    private fun startFileDownload(req: BrowserPage.FileRequest) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        startService(
+            Intent(this, DownloadService::class.java)
+                .putExtra(DownloadService.EXTRA_URL, req.url)
+                .putExtra(DownloadService.EXTRA_DIRECT, true)
+                .putExtra(DownloadService.EXTRA_USER_AGENT, req.userAgent)
+                .putExtra(DownloadService.EXTRA_COOKIE, req.cookie)
+                .putExtra(DownloadService.EXTRA_REFERER, req.referer)
+        )
+        toast(getString(R.string.download_starting))
+    }
+
+    // ------------------------------------------------------------- search
+
+    private fun setupSearch() {
+        val input = findViewById<EditText>(R.id.searchInput)
+        val go = { runSearch(input.text.toString()) }
+        findViewById<Button>(R.id.searchButton).setOnClickListener { go() }
+        input.setOnEditorActionListener { _, _, _ -> go(); true }
+    }
+
+    private fun runSearch(q: String) {
+        if (q.isBlank()) return
+        val status = findViewById<TextView>(R.id.searchStatus)
+        val box = findViewById<android.widget.LinearLayout>(R.id.searchResults)
+        status.text = getString(R.string.searching)
+        box.removeAllViews()
+        lifecycleScope.launch {
+            val res = withContext(Dispatchers.IO) {
+                try { Result.success(Search.run(this@MainActivity, q)) }
+                catch (e: Exception) { Result.failure(e) }
+            }
+            res.onFailure {
+                status.text = getString(R.string.search_failed,
+                    "[yt-dlp ${Engine.version(this@MainActivity)}] ${it.message}".take(300))
+            }
+            res.onSuccess { hits ->
+                status.text = if (hits.isEmpty()) getString(R.string.search_none) else ""
+                hits.forEach { box.addView(resultRow(it)) }
+            }
+        }
+    }
+
+    private fun resultRow(h: SearchHit): View {
+        val dp = resources.displayMetrics.density
+        val row = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setBackgroundResource(android.R.drawable.list_selector_background)
+        }
+        val thumb = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = null
+        }
+        row.addView(thumb, android.widget.LinearLayout.LayoutParams(
+            (112 * dp).toInt(), (63 * dp).toInt()))
+        val meta = listOf(h.channel, Search.formatDuration(h.durationSec))
+            .filter { it.isNotEmpty() }.joinToString(" - ")
+        val tv = TextView(this).apply {
+            text = if (meta.isEmpty()) h.title else "${h.title}\n$meta"
+            maxLines = 3
+            setPadding((10 * dp).toInt(), 0, (10 * dp).toInt(), 0)
+        }
+        row.addView(tv, android.widget.LinearLayout.LayoutParams(
+            0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.setOnClickListener {
+            urlInput.setText(h.url)
+            fetchInfo()
+            findViewById<View>(R.id.pageDownload).let { (it as? android.widget.ScrollView)?.smoothScrollTo(0, 0) }
+        }
+        lifecycleScope.launch {
+            val bmp = withContext(Dispatchers.IO) {
+                try {
+                    java.net.URL(h.thumbUrl).openStream().use {
+                        android.graphics.BitmapFactory.decodeStream(it)
+                    }
+                } catch (_: Exception) { null }
+            }
+            if (bmp != null) thumb.setImageBitmap(bmp)
+        }
+        return row
+    }
+
     override fun onDestroy() {
+        browser?.destroy()
+        offerDialog?.dismiss()
+        offerDialog = null
         nsd?.close()
         nsd = null
         super.onDestroy()
@@ -142,6 +273,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupBottomNav() {
         val pages = listOf(
             findViewById<View>(R.id.pageDownload),
+            findViewById<View>(R.id.pageBrowse),
             findViewById<View>(R.id.pageSend),
             findViewById<View>(R.id.pageReceive),
             findViewById<View>(R.id.pageSettings),
@@ -150,12 +282,13 @@ class MainActivity : AppCompatActivity() {
         nav.setOnItemSelectedListener { item ->
             val idx = when (item.itemId) {
                 R.id.nav_download -> 0
-                R.id.nav_send -> 1
-                R.id.nav_receive -> 2
-                else -> 3
+                R.id.nav_browse -> 1
+                R.id.nav_send -> 2
+                R.id.nav_receive -> 3
+                else -> 4
             }
             pages.forEachIndexed { i, v -> v.visibility = if (i == idx) View.VISIBLE else View.GONE }
-            if (idx == 1) ensureDiscovery()
+            if (idx == 2) ensureDiscovery()
             true
         }
         nav.selectedItemId = R.id.nav_download
@@ -226,6 +359,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetchInfo() {
         val url = currentUrl() ?: return
+        directUrl = null
         infoText.text = getString(R.string.fetching)
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -238,6 +372,18 @@ class MainActivity : AppCompatActivity() {
                     val mins = info.duration.let { if (it > 0) " - ${it / 60} min" else "" }
                     "${info.title}$mins"
                 } catch (e: Exception) {
+                    // yt-dlp has no extractor: maybe a plain direct file link.
+                    val direct = DirectFetch.probe(url)
+                    if (direct != null) {
+                        directUrl = url
+                        val sizeText = if (direct.size > 0) {
+                            "%.1f MB".format(direct.size / 1e6)
+                        } else {
+                            getString(R.string.size_unknown)
+                        }
+                        return@withContext getString(
+                            R.string.direct_file, direct.filename, sizeText)
+                    }
                     "Could not read this link: ${e.message}"
                 }
             }
@@ -258,8 +404,20 @@ class MainActivity : AppCompatActivity() {
                 .putExtra(DownloadService.EXTRA_URL, url)
                 .putExtra(DownloadService.EXTRA_FORMAT, quality.format)
                 .putExtra(DownloadService.EXTRA_AUDIO_ONLY, quality.audioOnly)
+                .putExtra(DownloadService.EXTRA_DIRECT, directUrl == url)
         )
         statusText.text = getString(R.string.download_starting)
+    }
+
+    private fun refreshEngineVersion() {
+        lifecycleScope.launch {
+            val v = withContext(Dispatchers.IO) {
+                Engine.ensureInit(this@MainActivity)
+                if (Engine.ready) Engine.version(this@MainActivity) else "not started"
+            }
+            findViewById<Button>(R.id.updateEngineButton).text =
+                getString(R.string.update_engine) + " (yt-dlp $v)"
+        }
     }
 
     private fun updateEngine() {
@@ -269,13 +427,13 @@ class MainActivity : AppCompatActivity() {
                 Engine.ensureInit(this@MainActivity)
                 if (!Engine.ready) return@withContext "Engine failed to start: ${Engine.error}"
                 try {
-                    YoutubeDL.getInstance().updateYoutubeDL(applicationContext)
-                    "Engine updated"
+                    Engine.update(applicationContext, nightly = false)
                 } catch (e: Exception) {
                     "Update failed: ${e.message}"
                 }
             }
             toast(msg)
+            refreshEngineVersion()
         }
     }
 
@@ -363,7 +521,11 @@ class MainActivity : AppCompatActivity() {
                     )
                     client.connect() // handshake only; nothing else sent yet
                     if (!client.trusted) {
-                        val ok = askFingerprint(device.serviceName, client.presentedFingerprint!!)
+                        // Dialogs must be built on the main thread (has a Looper);
+                        // this block runs on Dispatchers.IO.
+                        val ok = withContext(Dispatchers.Main) {
+                            askFingerprint(device.serviceName, client.presentedFingerprint!!)
+                        }
                         if (!ok) {
                             client.close()
                             withContext(Dispatchers.Main) {
@@ -382,7 +544,12 @@ class MainActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) {
                             sendStatus.text = "${getString(R.string.sending)} $name"
                         }
-                        val saved = client.send(name, size) {
+                        val t0 = System.nanoTime()
+                        val saved = client.send(name, size, onProgress = { sent, tot ->
+                            val line = ProgressText.line(
+                                this@MainActivity, name, sent, tot, t0)
+                            handler.post { sendStatus.text = line }
+                        }) {
                             contentResolver.openInputStream(uri)!!
                         }
                         withContext(Dispatchers.Main) {
@@ -455,6 +622,33 @@ class MainActivity : AppCompatActivity() {
             }
             ReceiveService.start(this)
         }
+    }
+
+    /** In-app accept/decline for an incoming offer; the notification action
+     *  covers the backgrounded case. Auto-declines with the offer's TTL. */
+    private fun showOfferDialog(text: String) {
+        val autoDecline = Runnable {
+            offerDialog?.let { if (it.isShowing) it.dismiss() }
+            offerDialog = null
+            startService(Intent(this, ReceiveService::class.java)
+                .setAction(ReceiveService.ACTION_DECLINE))
+        }
+        fun answer(action: String) {
+            handler.removeCallbacks(autoDecline)
+            startService(Intent(this, ReceiveService::class.java).setAction(action))
+        }
+        offerDialog = AlertDialog.Builder(this)
+            .setTitle(getString(R.string.offer_notification_title))
+            .setMessage(text)
+            .setPositiveButton(getString(R.string.accept)) { _, _ ->
+                answer(ReceiveService.ACTION_ACCEPT)
+            }
+            .setNegativeButton(getString(R.string.decline)) { _, _ ->
+                answer(ReceiveService.ACTION_DECLINE)
+            }
+            .setOnCancelListener { answer(ReceiveService.ACTION_DECLINE) }
+            .show()
+        handler.postDelayed(autoDecline, 60_000)
     }
 
     private fun renderReceive(s: ReceiveBus.State) {

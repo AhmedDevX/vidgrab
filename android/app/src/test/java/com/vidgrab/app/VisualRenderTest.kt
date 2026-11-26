@@ -38,7 +38,8 @@ import java.io.FileOutputStream
 class VisualRenderTest {
 
     private val navIds = listOf(
-        R.id.nav_download, R.id.nav_send, R.id.nav_receive, R.id.nav_settings)
+        R.id.nav_download, R.id.nav_browse, R.id.nav_send, R.id.nav_receive,
+        R.id.nav_settings)
 
     // 360dp x 780dp @ xxhdpi (density 3) -> 1080 x 2340 px
     private val widthPx = 1080
@@ -86,11 +87,17 @@ class VisualRenderTest {
     fun a_renderEnDarkDownload() = render("en_dark_download", 0, "en", "dark")
 
     @Test
-    fun b_renderEnLightSettings() = render("en_light_settings", 3, "en", "light")
+    fun b_renderEnLightSettings() = render("en_light_settings", 4, "en", "light")
 
     @Test
-    fun c_renderEnDarkReceive() = render("en_dark_receive", 2, "en", "dark")
+    fun c_renderEnDarkReceive() = render("en_dark_receive", 3, "en", "dark")
 
     @Test
-    fun d_renderArGlassSend() = render("ar_glass_send", 1, "ar", "glass")
+    fun d_renderArGlassSend() = render("ar_glass_send", 2, "ar", "glass")
+
+    @Test
+    fun e_renderEnDarkBrowse() = render("en_dark_browse", 1, "en", "dark")
+
+    @Test
+    fun f_renderArLightBrowse() = render("ar_light_browse", 1, "ar", "light")
 }

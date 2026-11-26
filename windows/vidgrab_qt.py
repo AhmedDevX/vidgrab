@@ -212,6 +212,8 @@ class Bridge(QObject):
     offer = Signal(str, str, int, object)        # sender, filename, size, respond
     compareFp = Signal(str, str, object)         # device name, fingerprint, result-fn
     devices = Signal()
+    searchDone = Signal(object)
+    searchError = Signal(str)
 
 
 class TransferUICallbacks(transfer.TransferUI):
@@ -400,6 +402,27 @@ class MainWindow(QMainWindow):
         lay = QVBoxLayout(inner)
         lay.setContentsMargins(4, 4, 4, 4)
         lay.setSpacing(14)
+
+        scard = Card()
+        srow = QHBoxLayout()
+        self.search_entry = QLineEdit()
+        self.search_entry.returnPressed.connect(self.on_search)
+        srow.addWidget(self.search_entry, 1)
+        self.search_btn = QPushButton(objectName="ghost")
+        self.search_btn.clicked.connect(self.on_search)
+        srow.addWidget(self.search_btn)
+        scard.lay.addLayout(srow)
+        self.search_status = QLabel(objectName="muted")
+        self.search_status.setWordWrap(True)
+        scard.lay.addWidget(self.search_status)
+        self.search_list = QListWidget()
+        self.search_list.setMaximumHeight(220)
+        self.search_list.itemActivated.connect(self._on_search_pick)
+        self.search_list.itemClicked.connect(self._on_search_pick)
+        self.search_list.hide()
+        scard.lay.addWidget(self.search_list)
+        lay.addWidget(scard)
+        self._search_results = []
 
         card = Card()
         self.url_entry = QLineEdit()
@@ -624,6 +647,10 @@ class MainWindow(QMainWindow):
             btn.setObjectName("navActive" if btn.isChecked() else "nav")
         self.setMinimumSize(760, 640)
         self.url_entry.setPlaceholderText(I18N.t("url_placeholder"))
+        self.search_entry.setPlaceholderText(I18N.t("search_placeholder"))
+        self.search_btn.setText(I18N.t("search"))
+        if not self._search_results:
+            self.search_status.setText("")
         self.fetch_btn.setText(I18N.t("fetch_info"))
         self.clip_check.setText(I18N.t("clipboard_watch"))
         for rb, q in zip(self.quality_buttons, core.QUALITY_OPTIONS):
@@ -673,6 +700,9 @@ class MainWindow(QMainWindow):
     def _wire_bridge(self):
         self.bridge.info.connect(self.info_label.setText)
         self.bridge.progress.connect(self._on_progress)
+        self.bridge.searchDone.connect(self._on_search_done)
+        self.bridge.searchError.connect(
+            lambda err: self.search_status.setText(I18N.t("search_failed", error=err)))
         self.bridge.downloadDone.connect(
             lambda path: self.status_label.setText(I18N.t("saved", path=path)))
         self.bridge.downloadError.connect(
@@ -682,6 +712,40 @@ class MainWindow(QMainWindow):
         self.bridge.receiveStatus.connect(self.recv_status.setText)
         self.bridge.offer.connect(self._on_offer)
         self.bridge.compareFp.connect(self._on_compare_fp)
+
+    def on_search(self):
+        q = self.search_entry.text().strip()
+        if not q:
+            return
+        self.search_status.setText(I18N.t("searching"))
+        self.search_list.hide()
+        threading.Thread(target=self._search_worker, args=(q,), daemon=True).start()
+
+    def _search_worker(self, q):
+        try:
+            self.bridge.searchDone.emit(core.search(q))
+        except Exception as exc:
+            self.bridge.searchError.emit(str(exc)[:200])
+
+    def _on_search_done(self, results):
+        self._search_results = results
+        self.search_list.clear()
+        if not results:
+            self.search_status.setText(I18N.t("search_none"))
+            self.search_list.hide()
+            return
+        self.search_status.setText(I18N.t("search_pick"))
+        for r in results:
+            dur = core.format_duration(r.duration_seconds)
+            meta = " - ".join(x for x in (r.channel, dur) if x)
+            self.search_list.addItem(f"{r.title}\n{meta}" if meta else r.title)
+        self.search_list.show()
+
+    def _on_search_pick(self, item):
+        row = self.search_list.row(item)
+        if 0 <= row < len(self._search_results):
+            self.url_entry.setText(self._search_results[row].url)
+            self.on_fetch()
 
     def on_fetch(self):
         url = core.extract_url(self.url_entry.text()) or self.url_entry.text().strip()

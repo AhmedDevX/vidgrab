@@ -5,6 +5,7 @@ Free, open-source, ad-free video downloader + local file sender, for **Android**
 - **Download videos:** share a video link to the app (or paste it), pick a quality (1080p / 720p / ... / MP3 audio), download with progress. Powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp), which supports [hundreds of sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
 - **Send files directly between devices:** devices running VidGrab on the same Wi-Fi find each other automatically; pick a device, confirm the fingerprint code against its screen, the recipient accepts, and the file moves over an authenticated, encrypted (TLS) connection. No cables, no accounts, no cloud.
 - **Browser fallback:** for devices without the app (iPhone, Mac, Linux, anything with a browser), an optional token-link + QR flow remains - explicitly started, clearly marked unencrypted.
+- **Search and browse (v1.0.0):** YouTube search on Android and Windows. On Android, an in-app browser with a "Download this page" button, file downloads from web pages routed into the app, and a basic ad blocker (per-site shield, pop-up blocking). The ad-block list is derived from [EasyList](https://easylist.to) (see [docs/CREDITS.md](docs/CREDITS.md)).
 - **Your look, your language:** Light, Dark and Glass themes, in English or Arabic (full RTL), on both apps.
 
 ## Honest scope (read this)
@@ -13,6 +14,8 @@ Free, open-source, ad-free video downloader + local file sender, for **Android**
 - **DRM-protected content (paid streaming services, encrypted video) is not supported and will not be added.**
 - **Native transfer is same-Wi-Fi only** (Windows and Android; a phone hotspot works as a manual fallback). First trust between two devices is the full-fingerprint comparison on both screens - it is only as strong as actually comparing it. The protocol has not been independently audited; see [docs/PROTOCOL.md](docs/PROTOCOL.md).
 - The optional **browser fallback is plain HTTP on the local network: it is not encrypted**. The link contains a random session token and sharing stops after 10 minutes or when you stop it, but treat the link like a key.
+- The Android **ad blocker is basic**: it blocks known ad hosts and pop-ups opened without a tap. It will miss ads served from the same host as the content, and in-page or video ads. Some sites' downloads (blob: or script-made links) do not work in the in-app browser.
+- You are responsible for having the right to download and keep the content you save. VidGrab does not check this for you.
 - Download speed depends on the source site and your connection; no fixed speed is promised.
 
 ## Devices can't see each other?

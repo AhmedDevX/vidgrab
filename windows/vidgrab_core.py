@@ -85,6 +85,59 @@ def find_ffmpeg() -> Optional[str]:
     return shutil.which("ffmpeg")
 
 
+
+@dataclass
+class SearchResult:
+    video_id: str
+    title: str
+    channel: str
+    duration_seconds: Optional[int]
+    url: str
+
+
+def format_duration(seconds: Optional[int]) -> str:
+    if not seconds:
+        return ""
+    seconds = int(seconds)
+    h, rem = divmod(seconds, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+def parse_search_entries(info: dict) -> list:
+    """Turn a flat yt-dlp search result into SearchResult rows.
+    Skips entries without an id or title."""
+    out = []
+    for e in (info or {}).get("entries") or []:
+        if not e:
+            continue
+        vid = e.get("id")
+        title = e.get("title")
+        if not vid or not title:
+            continue
+        out.append(SearchResult(
+            video_id=vid,
+            title=title,
+            channel=e.get("channel") or e.get("uploader") or "",
+            duration_seconds=int(e["duration"]) if e.get("duration") else None,
+            url=e.get("url") if str(e.get("url", "")).startswith("http")
+            else f"https://www.youtube.com/watch?v={vid}",
+        ))
+    return out
+
+
+def search(query: str, count: int = 15) -> list:
+    """YouTube search through yt-dlp (flat extraction, no downloads)."""
+    query = (query or "").strip()
+    if not query:
+        return []
+    opts = {"quiet": True, "no_warnings": True, "extract_flat": True,
+            "skip_download": True}
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(f"ytsearch{int(count)}:{query}", download=False)
+    return parse_search_entries(info)
+
+
 def probe(url: str) -> VideoInfo:
     """Fetch title/duration/etc. without downloading the video."""
     opts = {"quiet": True, "no_warnings": True, "noplaylist": True, "skip_download": True}
@@ -261,9 +314,29 @@ def download(
             }
         ]
 
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        path = ydl.prepare_filename(info)
+    # Fallback chain for "Requested format is not available": chosen
+    # selector -> yt-dlp default (no format) -> "best*".
+    info = None
+    path = ""
+    last_exc = None
+    for sel in (quality["format"], None, "best*"):
+        attempt = dict(opts)
+        if sel is None:
+            attempt.pop("format", None)
+        else:
+            attempt["format"] = sel
+        try:
+            with yt_dlp.YoutubeDL(attempt) as ydl:
+                info = ydl.extract_info(url, download=True)
+                path = ydl.prepare_filename(info)
+            last_exc = None
+            break
+        except yt_dlp.utils.DownloadError as exc:
+            last_exc = exc
+            if "Requested format is not available" not in str(exc):
+                raise
+    if last_exc is not None:
+        raise last_exc
 
     if quality["audio_only"]:
         path = os.path.splitext(path)[0] + ".mp3"
