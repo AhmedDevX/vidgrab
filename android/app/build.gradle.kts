@@ -51,6 +51,7 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
+        unitTests.all { it.maxHeapSize = "700m"; it.maxParallelForks = 1; it.forkEvery = 1 }
     }
 
     buildTypes {
@@ -84,6 +85,10 @@ dependencies {
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
 
     // Embedded HTTP server for the file-sharing feature (BSD-3-Clause).
+    // In-app player (Apache-2.0).
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
+
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 
     // QR code generation for the sharing link (Apache-2.0).

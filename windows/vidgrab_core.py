@@ -43,6 +43,8 @@ class VideoInfo:
     extractor: str
     webpage_url: str
     thumbnail: Optional[str] = None
+    # Estimated bytes per QUALITY_OPTIONS entry (None = unknown).
+    sizes: Optional[list] = None
 
 
 @dataclass
@@ -138,12 +140,119 @@ def search(query: str, count: int = 15) -> list:
     return parse_search_entries(info)
 
 
+def _max_height(selector: str) -> Optional[int]:
+    import re
+    m = re.search(r"height<=(\d+)", selector)
+    return int(m.group(1)) if m else None
+
+
+def _fmt_size(f: dict, duration: int) -> int:
+    size = f.get("filesize") or f.get("filesize_approx") or 0
+    if size:
+        return int(size)
+    tbr = f.get("tbr") or 0
+    if tbr and duration:
+        return int(tbr * 1000 / 8 * duration)
+    return 0
+
+
+def estimate_size(formats, max_height, audio_only, duration) -> Optional[int]:
+    """Estimated download size in bytes from yt-dlp's format list, or None
+    when it cannot be known. Never invents a number."""
+    formats = formats or []
+    duration = duration or 0
+
+    def has_v(f):
+        return (f.get("vcodec") or "none") != "none" and (f.get("height") or 0) > 0
+
+    def has_a(f):
+        return (f.get("acodec") or "none") != "none"
+
+    audio_only_fmts = [f for f in formats if has_a(f) and not has_v(f)]
+    sizes_a = [s for s in (_fmt_size(f, duration) for f in audio_only_fmts) if s > 0]
+    if audio_only:
+        if sizes_a:
+            return max(sizes_a)
+        any_a = [s for s in (_fmt_size(f, duration) for f in formats if has_a(f)) if s > 0]
+        return min(any_a) if any_a else None
+    vids = [f for f in formats
+            if has_v(f) and (max_height is None or f["height"] <= max_height)]
+    if not vids:
+        return None
+    top = max(f["height"] for f in vids)
+    best = max((f for f in vids if f["height"] == top),
+               key=lambda f: _fmt_size(f, duration))
+    vs = _fmt_size(best, duration)
+    if vs <= 0:
+        return None
+    if has_a(best):
+        return vs
+    return vs + max(sizes_a) if sizes_a else None
+
+
+def format_size(n: int) -> str:
+    if n >= 1_000_000_000:
+        return f"~{n / 1e9:.1f} GB"
+    if n >= 1_000_000:
+        return f"~{max(1, int(n / 1e6))} MB"
+    return f"~{max(1, int(n / 1e3))} KB"
+
+
+_VIDEO_EXT = {"mp4", "mkv", "webm", "mov", "avi", "3gp", "m4v", "flv", "ts"}
+_AUDIO_EXT = {"mp3", "m4a", "aac", "ogg", "opus", "wav", "flac", "oga"}
+_IMAGE_EXT = {"jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "avif"}
+
+
+def file_kind(name: str) -> str:
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if ext in _VIDEO_EXT:
+        return "video"
+    if ext in _AUDIO_EXT:
+        return "audio"
+    if ext in _IMAGE_EXT:
+        return "image"
+    return "other"
+
+
+def list_downloads(directory: str) -> list:
+    """Files in the download folder, newest first: (path, name, size, mtime, kind)."""
+    out = []
+    try:
+        for entry in os.scandir(directory):
+            if entry.is_file() and not entry.name.endswith((".part", ".ytdl", ".tmp")):
+                st = entry.stat()
+                out.append((entry.path, entry.name, st.st_size, st.st_mtime,
+                            file_kind(entry.name)))
+    except OSError:
+        return []
+    out.sort(key=lambda r: r[3], reverse=True)
+    return out
+
+
+def pick_clip_url(clip: Optional[str], current: str, last_pasted: Optional[str]) -> Optional[str]:
+    """URL to auto-paste from the clipboard, or None (no URL, already in the
+    field, or already auto-pasted before)."""
+    if not clip:
+        return None
+    url = extract_url(clip)
+    if not url:
+        return None
+    url = url.rstrip(".,)")
+    if url == last_pasted or url in (current or ""):
+        return None
+    return url
+
+
 def probe(url: str) -> VideoInfo:
     """Fetch title/duration/etc. without downloading the video."""
     opts = {"quiet": True, "no_warnings": True, "noplaylist": True, "skip_download": True}
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
+    sizes = [estimate_size(info.get("formats"),
+                           _max_height(q["format"]), q["audio_only"], info.get("duration"))
+             for q in QUALITY_OPTIONS]
     return VideoInfo(
+        sizes=sizes,
         title=info.get("title") or "Untitled",
         duration_seconds=info.get("duration"),
         extractor=info.get("extractor_key") or info.get("extractor") or "generic",

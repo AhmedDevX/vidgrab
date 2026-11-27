@@ -36,31 +36,34 @@ DOWNLOAD_DIR = os.path.join(os.path.expanduser("~"), "Downloads", "VidGrab")
 STORE_DIR = os.path.join(os.path.expanduser("~"), ".vidgrab")
 SETTINGS_FILE = os.path.join(STORE_DIR, "settings.json")
 
-ACCENT = "#6C5CE7"
+ACCENT = "#D9BC90"
 
 PALETTES = {
     "light": {
-        "bg": "#F2F2F7", "card": "#FFFFFF", "card_alt": "#EBEBF2",
-        "text": "#1C1C1E", "subtext": "#6E6E73", "accent": "#5E5CE6",
-        "accent_hover": "#4B49C6", "on_accent": "#FFFFFF",
-        "border": "#D9D9E3", "success": "#248A3D", "danger": "#D70015",
-        "entry": "#FFFFFF", "glass_grad": None,
+        "bg": "#FAF6EF", "card": "rgba(255,255,255,0.72)", "card_alt": "#EFE6D8",
+        "text": "#2B221B", "subtext": "#7A6D62", "accent": "#8A6D4F",
+        "accent_hover": "#755A3F", "on_accent": "#FFFFFF",
+        "accent2": "#B98F6A",
+        "border": "rgba(138,109,79,0.25)", "success": "#4F7A4B", "danger": "#A8473F",
+        "entry": "rgba(255,255,255,0.85)", "glass_grad": ("#FAF6EF", "#EDE3D3"),
     },
     "dark": {
-        "bg": "#0D0D12", "card": "#1B1B23", "card_alt": "#272732",
-        "text": "#F5F5F7", "subtext": "#9C9CA5", "accent": "#7D7AFF",
-        "accent_hover": "#9B99FF", "on_accent": "#14142B",
-        "border": "#34343F", "success": "#30D158", "danger": "#FF453A",
-        "entry": "#13131A", "glass_grad": None,
+        "bg": "#14110F", "card": "rgba(255,255,255,0.07)", "card_alt": "#33292A",
+        "text": "#F6EFE6", "subtext": "#BFB1A3", "accent": "#D9BC90",
+        "accent_hover": "#E6CDA7", "on_accent": "#2A1F14",
+        "accent2": "#B98F6A",
+        "border": "rgba(255,255,255,0.16)", "success": "#8FA68A", "danger": "#C98A84",
+        "entry": "rgba(0,0,0,0.28)", "glass_grad": ("#14110F", "#271F1A"),
     },
     "glass": {
-        "bg": "#16162A", "card": "#25254A", "card_alt": "#30305C",
-        "text": "#F5F5FA", "subtext": "#ABABC9", "accent": "#8E8CFF",
-        "accent_hover": "#AAA8FF", "on_accent": "#14142A",
-        "border": "#4E4E86", "success": "#42E8B4", "danger": "#FF6E7A",
-        "entry": "#1C1C38",
-        # Gradient backdrop makes Glass deliberately distinct from Dark.
-        "glass_grad": ("#131324", "#232349"),
+        "bg": "#1A1315", "card": "rgba(255,255,255,0.10)", "card_alt": "#40323A",
+        "text": "#F6EFE6", "subtext": "#D2C0BA", "accent": "#E0C3A8",
+        "accent_hover": "#EBD3BC", "on_accent": "#2A1F18",
+        "accent2": "#C9A0A0",
+        "border": "rgba(230,205,189,0.30)", "success": "#9BB397", "danger": "#CF918B",
+        "entry": "rgba(0,0,0,0.25)",
+        # Layered gradient backdrop; no real blur.
+        "glass_grad": ("#1A1315", "#3A2B2E"),
     },
 }
 
@@ -83,12 +86,15 @@ def load_settings() -> dict:
         return {}
 
 
-def save_settings(theme: str, language: str) -> None:
+def save_settings(theme: str, language: str, **extra) -> None:
     try:
         import json
         os.makedirs(STORE_DIR, exist_ok=True)
+        data = load_settings()
+        data.update({"theme": theme, "language": language})
+        data.update(extra)
         with open(SETTINGS_FILE, "w", encoding="utf-8") as fh:
-            json.dump({"theme": theme, "language": language}, fh)
+            json.dump(data, fh)
     except Exception:
         pass
 
@@ -104,11 +110,11 @@ QMainWindow, QDialog {{ {bg_rule} }}
 QWidget {{ color: {p['text']}; font-size: 14px; }}
 QFrame#card {{
     background: {p['card']}; border: 1px solid {p['border']};
-    border-radius: 16px;
+    border-radius: 22px;
 }}
 QFrame#rail {{
     background: {p['card']}; border: 1px solid {p['border']};
-    border-radius: 18px;
+    border-radius: 26px;
 }}
 QLabel#wordmark {{ font-size: 24px; font-weight: 800; color: {p['text']}; }}
 QLabel#wordmarkAccent {{ color: {p['accent']}; font-size: 24px; font-weight: 800; }}
@@ -117,12 +123,13 @@ QLabel#h1 {{ font-size: 17px; font-weight: 700; }}
 QLabel#muted {{ color: {p['subtext']}; }}
 QLabel#mono {{ font-family: 'Cascadia Mono', 'Noto Sans Mono', monospace; font-size: 13px; }}
 QPushButton {{
-    background: {p['accent']}; color: {p['on_accent']};
-    border: none; border-radius: 10px; padding: 9px 18px; font-weight: 600;
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 {p['accent']}, stop:1 {p['accent2']});
+    color: {p['on_accent']};
+    border: none; border-radius: 14px; padding: 9px 18px; font-weight: 600;
 }}
 QPushButton:hover {{ background: {p['accent_hover']}; }}
 QPushButton#ghost {{
-    background: {p['card_alt']}; color: {p['text']};
+    background: {p['card']}; color: {p['text']};
     border: 1px solid {p['border']};
 }}
 QPushButton#ghost:hover {{ border-color: {p['accent']}; }}
@@ -134,12 +141,12 @@ QPushButton#nav {{
     border-radius: 12px; padding: 10px 6px; font-weight: 600;
 }}
 QPushButton#navActive {{
-    background: {p['accent']}; color: {p['on_accent']};
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {p['accent']}, stop:1 {p['accent2']}); color: {p['on_accent']};
     border-radius: 12px; padding: 10px 6px; font-weight: 700;
 }}
 QLineEdit {{
     background: {p['entry']}; color: {p['text']};
-    border: 1px solid {p['border']}; border-radius: 10px; padding: 9px 12px;
+    border: 1px solid {p['border']}; border-radius: 14px; padding: 10px 14px;
 }}
 QLineEdit:focus {{ border-color: {p['accent']}; }}
 QProgressBar {{
@@ -150,9 +157,11 @@ QListWidget {{
     background: {p['entry']}; border: 1px solid {p['border']};
     border-radius: 12px; padding: 4px;
 }}
-QListWidget::item {{ border-radius: 8px; padding: 8px; }}
+QListWidget::item {{ background: {p['card']}; border: 1px solid {p['border']}; border-radius: 14px; padding: 12px; margin: 3px 2px; }}
 QListWidget::item:selected {{ background: {p['accent']}; color: {p['on_accent']}; }}
-QCheckBox, QRadioButton {{ spacing: 8px; }}
+QCheckBox {{ spacing: 8px; }}
+QRadioButton {{ spacing: 10px; padding: 9px 12px; border: 1px solid {p['border']}; border-radius: 14px; background: {p['card']}; }}
+QRadioButton:checked {{ border: 2px solid {p['accent']}; }}
 QRadioButton::indicator {{
     width: 16px; height: 16px; border-radius: 9px;
     border: 2px solid {p['subtext']}; background: transparent;
@@ -213,6 +222,7 @@ class Bridge(QObject):
     compareFp = Signal(str, str, object)         # device name, fingerprint, result-fn
     devices = Signal()
     searchDone = Signal(object)
+    sizes = Signal(object)
     searchError = Signal(str)
 
 
@@ -375,7 +385,7 @@ class MainWindow(QMainWindow):
         rl.addSpacing(14)
         self.nav_buttons = []
         self.nav_group = QButtonGroup(self)
-        for i in range(4):
+        for i in range(5):
             b = QPushButton(objectName="nav")
             b.setCheckable(True)
             b.clicked.connect(lambda _=False, idx=i: self._nav(idx))
@@ -389,6 +399,7 @@ class MainWindow(QMainWindow):
         self.pages = QStackedWidget()
         root.addWidget(self.pages, 1)
         self.pages.addWidget(self._page_download())
+        self.pages.addWidget(self._page_files())
         self.pages.addWidget(self._page_send())
         self.pages.addWidget(self._page_receive())
         self.pages.addWidget(self._page_settings())
@@ -434,6 +445,9 @@ class MainWindow(QMainWindow):
         row.addWidget(self.fetch_btn)
         card.lay.addLayout(row)
         self.clip_check = QCheckBox()
+        self.clip_check.setChecked(bool(load_settings().get("autopaste", True)))
+        self.clip_check.toggled.connect(
+            lambda on: save_settings(self.theme, I18N.language, autopaste=bool(on)))
         card.lay.addWidget(self.clip_check)
         self.info_label = QLabel(objectName="muted")
         self.info_label.setWordWrap(True)
@@ -449,6 +463,10 @@ class MainWindow(QMainWindow):
             qcard.lay.addWidget(rb)
             self.quality_buttons.append(rb)
         self.quality_buttons[0].setChecked(True)
+        self._sizes = None
+        self.size_note = QLabel(objectName="muted")
+        self.size_note.setWordWrap(True)
+        qcard.lay.addWidget(self.size_note)
         lay.addWidget(qcard)
 
         self.download_btn = QPushButton()
@@ -631,6 +649,8 @@ class MainWindow(QMainWindow):
 
     def _nav(self, idx: int):
         self.pages.setCurrentIndex(idx)
+        if idx == 1 and hasattr(self, "files_list"):
+            self._refresh_files()
         for i, btn in enumerate(self.nav_buttons):
             btn.setChecked(i == idx)
             btn.setObjectName("navActive" if i == idx else "nav")
@@ -642,7 +662,7 @@ class MainWindow(QMainWindow):
         self.tagline.setText(
             "حمّل. شارك. تم." if I18N.rtl else "Download. Share. Done.")
         for btn, key in zip(self.nav_buttons,
-                            ("tab_download", "tab_send", "tab_receive", "tab_settings")):
+                            ("tab_download", "tab_files", "tab_send", "tab_receive", "tab_settings")):
             btn.setText(I18N.t(key))
             btn.setObjectName("navActive" if btn.isChecked() else "nav")
         self.setMinimumSize(760, 640)
@@ -652,7 +672,6 @@ class MainWindow(QMainWindow):
         if not self._search_results:
             self.search_status.setText("")
         self.fetch_btn.setText(I18N.t("fetch_info"))
-        self.clip_check.setText(I18N.t("clipboard_watch"))
         for rb, q in zip(self.quality_buttons, core.QUALITY_OPTIONS):
             label = q["label"]
             if label == "Best quality":
@@ -660,6 +679,14 @@ class MainWindow(QMainWindow):
             elif label.startswith("Audio only"):
                 label = I18N.t("quality_audio")
             rb.setText(label)
+            rb._base_label = label
+        self._apply_sizes()
+        self.size_note.setText(I18N.t("size_note"))
+        self.clip_check.setText(I18N.t("autopaste"))
+        for b, key in zip(self.file_filter_btns, ("lib_all", "lib_video", "lib_audio", "lib_images", "lib_other")):
+            b.setText(I18N.t(key))
+        self.files_empty.setText(I18N.t("lib_empty_win"))
+        self.files_note.setText(I18N.t("lib_open_note"))
         self.download_btn.setText(I18N.t("download"))
         self.open_btn.setText(I18N.t("open_folder"))
         self.send_title.setText(I18N.t("send_to_device"))
@@ -701,10 +728,12 @@ class MainWindow(QMainWindow):
         self.bridge.info.connect(self.info_label.setText)
         self.bridge.progress.connect(self._on_progress)
         self.bridge.searchDone.connect(self._on_search_done)
+        self.bridge.sizes.connect(self._on_sizes)
         self.bridge.searchError.connect(
             lambda err: self.search_status.setText(I18N.t("search_failed", error=err)))
         self.bridge.downloadDone.connect(
-            lambda path: self.status_label.setText(I18N.t("saved", path=path)))
+            lambda path: (self.status_label.setText(I18N.t("saved", path=path)),
+                          self._refresh_files()))
         self.bridge.downloadError.connect(
             lambda err: self.status_label.setText(I18N.t("failed", error=err)))
         self.bridge.sendStatus.connect(self.send_status.setText)
@@ -712,6 +741,105 @@ class MainWindow(QMainWindow):
         self.bridge.receiveStatus.connect(self.recv_status.setText)
         self.bridge.offer.connect(self._on_offer)
         self.bridge.compareFp.connect(self._on_compare_fp)
+
+    def _apply_sizes(self):
+        for i, rb in enumerate(self.quality_buttons):
+            base = getattr(rb, "_base_label", rb.text())
+            if self._sizes is None:
+                rb.setText(base)
+            else:
+                est = self._sizes[i] if i < len(self._sizes) else None
+                rb.setText(f"{base}  ({core.format_size(est)})" if est
+                           else f"{base}  ({I18N.t('size_unknown_q')})")
+
+    def _on_sizes(self, sizes):
+        self._sizes = sizes
+        self._apply_sizes()
+
+    # ---------------------------------------------------------- files page
+
+    def _page_files(self) -> QWidget:
+        page = QWidget(objectName="pageRoot")
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(4, 4, 4, 4)
+        lay.setSpacing(12)
+        card = Card()
+        row = QHBoxLayout()
+        self.file_filter_btns = []
+        self._file_filter = None
+        for kind in (None, "video", "audio", "image", "other"):
+            b = QPushButton(objectName="ghost")
+            b.clicked.connect(lambda _=False, k=kind: self._set_file_filter(k))
+            self.file_filter_btns.append(b)
+            row.addWidget(b)
+        row.addStretch(1)
+        card.lay.addLayout(row)
+        self.files_list = QListWidget()
+        self.files_list.itemActivated.connect(self._open_file_item)
+        self.files_list.itemDoubleClicked.connect(self._open_file_item)
+        card.lay.addWidget(self.files_list, 1)
+        self.files_empty = QLabel(objectName="muted")
+        self.files_empty.setWordWrap(True)
+        card.lay.addWidget(self.files_empty)
+        self.files_note = QLabel(objectName="muted")
+        self.files_note.setWordWrap(True)
+        card.lay.addWidget(self.files_note)
+        lay.addWidget(card, 1)
+        self._file_rows = []
+        return page
+
+    def _set_file_filter(self, kind):
+        self._file_filter = kind
+        self._refresh_files()
+
+    def _refresh_files(self):
+        rows = core.list_downloads(DOWNLOAD_DIR)
+        kinds = (None, "video", "audio", "image", "other")
+        keys = ("lib_all", "lib_video", "lib_audio", "lib_images", "lib_other")
+        for b, k, key in zip(self.file_filter_btns, kinds, keys):
+            n = len(rows) if k is None else sum(1 for r in rows if r[4] == k)
+            b.setText(f"{I18N.t(key)} {n}")
+        shown = [r for r in rows if self._file_filter in (None, r[4])]
+        self._file_rows = shown
+        self.files_list.clear()
+        for path, name, size, mtime, kind in shown:
+            mb = f"{size / 1e6:.1f} MB" if size >= 1e6 else f"{max(1, size // 1000)} KB"
+            self.files_list.addItem(f"{name}\n{I18N.t('lib_' + ('images' if kind == 'image' else kind))}  -  {mb}")
+        self.files_empty.setVisible(not shown)
+        self.files_list.setVisible(bool(shown))
+
+    def _open_file_item(self, item):
+        row = self.files_list.row(item)
+        if 0 <= row < len(self._file_rows):
+            path = self._file_rows[row][0]
+            if sys.platform.startswith("win"):
+                os.startfile(path)  # type: ignore[attr-defined]
+            else:
+                subprocess.Popen(["xdg-open", path])
+
+    # ----------------------------------------------------------- auto-paste
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        try:
+            from PySide6.QtCore import QEvent
+            if event.type() == QEvent.ActivationChange and self.isActiveWindow():
+                self._autopaste()
+        except Exception:
+            pass
+
+    def _autopaste(self):
+        if not self.clip_check.isChecked() or not hasattr(self, "url_entry"):
+            return
+        text = QApplication.clipboard().text()
+        saved = load_settings()
+        url = core.pick_clip_url(text, self.url_entry.text(), saved.get("last_pasted"))
+        if not url:
+            return
+        save_settings(self.theme, I18N.language, last_pasted=url)
+        self.url_entry.setText(url)
+        self._direct_url = None
+        self.info_label.setText(I18N.t("pasted_note"))
 
     def on_search(self):
         q = self.search_entry.text().strip()
@@ -756,8 +884,10 @@ class MainWindow(QMainWindow):
 
     def _fetch_worker(self, url):
         self._direct_url = None
+        self.bridge.sizes.emit(None)
         try:
             info = core.probe(url)
+            self.bridge.sizes.emit(info.sizes)
             mins = f", {info.duration_seconds // 60} min" if info.duration_seconds else ""
             self.bridge.info.emit(f"{info.title}  ({info.extractor}{mins})")
         except Exception as exc:

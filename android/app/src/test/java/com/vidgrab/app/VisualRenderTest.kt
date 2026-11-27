@@ -7,8 +7,6 @@ import android.view.View
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.test.core.app.ApplicationProvider
-import com.google.android.material.bottomnavigation.BottomNavigationItemView
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.FixMethodOrder
@@ -38,14 +36,28 @@ import java.io.FileOutputStream
 class VisualRenderTest {
 
     private val navIds = listOf(
-        R.id.nav_download, R.id.nav_browse, R.id.nav_send, R.id.nav_receive,
-        R.id.nav_settings)
+        R.id.nav_download, R.id.nav_library, R.id.nav_browse, R.id.nav_send,
+        R.id.nav_receive, R.id.nav_settings)
 
     // 360dp x 780dp @ xxhdpi (density 3) -> 1080 x 2340 px
     private val widthPx = 1080
     private val heightPx = 2340
 
-    private fun render(tag: String, pageIndex: Int, lang: String, theme: String) {
+    private fun fillLibrary(activity: MainActivity) {
+        val page = activity.findViewById<android.widget.FrameLayout>(R.id.pageLibrary)
+        val lp = page.getChildAt(0)
+        val field = MainActivity::class.java.getDeclaredField("library").apply { isAccessible = true }
+        val lib = field.get(activity) as LibraryPage
+        val u = android.net.Uri.parse("content://x/1")
+        lib.setItems(listOf(
+            LibItem(u, "Lofi beats to study to.mp4", 312_000_000, "video/mp4", 1_795_000_000),
+            LibItem(u, "Podcast episode 12.mp3", 48_500_000, "audio/mpeg", 1_795_000_100),
+            LibItem(u, "Family trip.jpg", 3_200_000, "image/jpeg", 1_795_000_200),
+            LibItem(u, "report.pdf", 1_100_000, "application/pdf", 1_795_000_300),
+        ))
+    }
+
+    private fun render(tag: String, pageIndex: Int, lang: String, theme: String, picker: Boolean = false) {
         val app = ApplicationProvider.getApplicationContext<Context>()
         app.getSharedPreferences("vidgrab_settings", Context.MODE_PRIVATE)
             .edit().putString("theme", theme).commit()
@@ -56,8 +68,16 @@ class VisualRenderTest {
         val activity = controller.get()
 
         // Real click-through navigation, same path as a user tap.
-        val nav = activity.findViewById<BottomNavigationView>(R.id.bottomNav)
-        nav.findViewById<BottomNavigationItemView>(navIds[pageIndex]).performClick()
+        activity.findViewById<View>(navIds[pageIndex]).performClick()
+        if (pageIndex == 1) fillLibrary(activity)
+        if (picker) {
+            val fm = MainActivity::class.java.getMethod("applySizes", List::class.java, Long::class.java)
+                .apply { isAccessible = true }
+            fm.invoke(activity, listOf(
+                Fmt(1080, true, false, 41_000_000, 0), Fmt(720, true, false, 21_500_000, 0),
+                Fmt(480, true, false, 9_800_000, 0), Fmt(360, true, false, 6_100_000, 0),
+                Fmt(0, false, true, 3_200_000, 0)), 200L)
+        }
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
 
         val root: View = activity.window.decorView
@@ -66,6 +86,13 @@ class VisualRenderTest {
             View.MeasureSpec.makeMeasureSpec(heightPx, View.MeasureSpec.EXACTLY),
         )
         root.layout(0, 0, widthPx, heightPx)
+        if (picker) {
+            val sv = activity.findViewById<android.widget.ScrollView>(R.id.pageDownload)
+            sv.scrollTo(0, 900)
+            root.measure(View.MeasureSpec.makeMeasureSpec(widthPx, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(heightPx, View.MeasureSpec.EXACTLY))
+            root.layout(0, 0, widthPx, heightPx)
+        }
         val bmp = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         root.draw(Canvas(bmp))
         val dir = File("build/outputs/visual")
@@ -87,17 +114,32 @@ class VisualRenderTest {
     fun a_renderEnDarkDownload() = render("en_dark_download", 0, "en", "dark")
 
     @Test
-    fun b_renderEnLightSettings() = render("en_light_settings", 4, "en", "light")
+    fun b_renderEnLightSettings() = render("en_light_settings", 5, "en", "light")
 
     @Test
-    fun c_renderEnDarkReceive() = render("en_dark_receive", 3, "en", "dark")
+    fun c_renderEnDarkReceive() = render("en_dark_receive", 4, "en", "dark")
 
     @Test
-    fun d_renderArGlassSend() = render("ar_glass_send", 2, "ar", "glass")
+    fun d_renderArGlassSend() = render("ar_glass_send", 3, "ar", "glass")
 
     @Test
-    fun e_renderEnDarkBrowse() = render("en_dark_browse", 1, "en", "dark")
+    fun e_renderEnDarkBrowse() = render("en_dark_browse", 2, "en", "dark")
 
     @Test
-    fun f_renderArLightBrowse() = render("ar_light_browse", 1, "ar", "light")
+    fun f_renderArLightBrowse() = render("ar_light_browse", 2, "ar", "light")
+
+    @Test
+    fun g_renderEnDarkLibrary() = render("en_dark_library", 1, "en", "dark")
+
+    @Test
+    fun h_renderArGlassLibrary() = render("ar_glass_library", 1, "ar", "glass")
+
+    @Test
+    fun i_renderEnDarkPicker() = render("en_dark_picker", 0, "en", "dark", true)
+
+    @Test
+    fun j_renderArLightPicker() = render("ar_light_picker", 0, "ar", "light", true)
+
+    @Test
+    fun k_renderEnGlassSettings() = render("en_glass_settings", 5, "en", "glass")
 }

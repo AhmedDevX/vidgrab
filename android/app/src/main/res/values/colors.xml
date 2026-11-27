@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#5E5CE6</color>
+    <color name="ic_launcher_background">#8A6D4F</color>
 
     <!-- Brand accent (indigo), shared across themes -->
-    <color name="accent">#6C5CE7</color>
-    <color name="accent_dark">#8E8CFF</color>
+    <color name="accent">#8A6D4F</color>
+    <color name="accent_dark">#D9BC90</color>
 
     <!-- Glass theme palette (violet-indigo, distinct from plain dark) -->
-    <color name="glass_bg">#FF17172B</color>
-    <color name="glass_surface">#FF25254A</color>
-    <color name="glass_surface_alt">#FF30305C</color>
+    <color name="glass_bg">#FF1E1618</color>
+    <color name="glass_surface">#FF33282A</color>
+    <color name="glass_surface_alt">#FF40323A</color>
     <color name="glass_on_surface">#FFF5F5FA</color>
-    <color name="glass_on_surface_sub">#FFABABC9</color>
-    <color name="glass_border">#FF4E4E86</color>
-    <color name="glass_on_primary">#FF1B1B30</color>
+    <color name="glass_on_surface_sub">#FFD2C0BA</color>
+    <color name="glass_border">#FF8C7570</color>
+    <color name="glass_on_primary">#FF2A1F18</color>
+
+    <!-- v9 surfaces (light) -->
+    <color name="card_fill">#B3FFFFFF</color>
+    <color name="card_stroke">#338A6D4F</color>
+    <color name="bg_top">#FFFAF6EF</color>
+    <color name="bg_bottom">#FFEDE3D3</color>
+    <color name="glow_a">#338A6D4F</color>
+    <color name="glow_b">#33C9A97A</color>
+    <color name="text_primary">#FF2B221B</color>
+    <color name="text_secondary">#FF7A6D62</color>
+    <color name="glass_card_fill">#26FFFFFF</color>
+    <color name="glass_card_stroke">#44E6CDBD</color>
 </resources>

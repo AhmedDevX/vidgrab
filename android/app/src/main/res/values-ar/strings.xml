@@ -88,4 +88,39 @@
     <string name="file_download_title">تحميل هذا الملف؟</string>
     <string name="file_download_msg">%1$s من %2$s</string>
     <string name="download_unsupported">نوع التحميل هذا غير مدعوم</string>
+
+    <string name="tab_library">الملفات</string>
+    <string name="size_note">الأحجام تقديرية من بيانات الموقع وممكن تختلف عن الملف المحفوظ.</string>
+    <string name="size_unknown_q">الحجم غير معروف</string>
+    <string name="lib_all">الكل</string>
+    <string name="lib_video">فيديو</string>
+    <string name="lib_audio">صوت</string>
+    <string name="lib_images">صور</string>
+    <string name="lib_other">أخرى</string>
+    <string name="lib_empty">لا توجد تحميلات بعد. الملفات التي يحفظها فيدجراب تظهر هنا. اضغط للتشغيل أو العرض، واضغط مطولاً للحذف.</string>
+    <string name="lib_cannot_open">لا يوجد تطبيق يفتح هذا الملف</string>
+    <string name="lib_delete_title">حذف هذا الملف؟</string>
+    <string name="lib_delete">حذف</string>
+    <string name="player_open_other">فتح في تطبيق آخر</string>
+    <string name="player_error">تعذر تشغيل هذا الملف داخل التطبيق (%1$s).</string>
+    <string name="autopaste">لصق الرابط المنسوخ تلقائياً عند فتح التطبيق</string>
+    <string name="pasted_toast">تم لصق الرابط المنسوخ</string>
+    <string name="tagline">الصق الرابط وخد ملفك.</string>
+    <string name="my_files">ملفاتي</string>
+    <string name="search_files">ابحث في الملفات</string>
+    <string name="q_video_audio">فيديو + صوت</string>
+    <string name="q_audio_only">صوت فقط</string>
+    <string name="q_hd">HD</string>
+    <string name="q_best">الأفضل</string>
+    <string name="menu_open">فتح</string>
+    <string name="menu_share">مشاركة</string>
+    <string name="player_speed">السرعة</string>
+<string name="q_best_quality">أفضل جودة</string><string name="q_audio_mp3">صوت فقط (MP3)</string>
+    <string name="shield_pill_on">الدرع %1$d</string>
+    <string name="shield_pill_off">الدرع متوقف</string>
+    <string name="browse_empty_title">تصفح الإنترنت</string>
+    <string name="browse_empty_sub">افتح صفحة ثم اضغط تحميل لحفظ الفيديو. الإعلانات من المواقع المعروفة تُخفى.</string>
+    <string name="browse_go">ابحث أو اكتب عنوانا</string>
+    <string name="tab_send_title">إرسال</string>
+    <string name="tab_receive_title">استلام</string>
 </resources>

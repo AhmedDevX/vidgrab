@@ -88,4 +88,39 @@
     <string name="file_download_title">Download this file?</string>
     <string name="file_download_msg">%1$s from %2$s</string>
     <string name="download_unsupported">This download type is not supported</string>
+
+    <string name="tab_library">Files</string>
+    <string name="size_note">Sizes are estimates from the site\'s data and can differ from the saved file.</string>
+    <string name="size_unknown_q">size unknown</string>
+    <string name="lib_all">All</string>
+    <string name="lib_video">Video</string>
+    <string name="lib_audio">Audio</string>
+    <string name="lib_images">Images</string>
+    <string name="lib_other">Other</string>
+    <string name="lib_empty">No downloads yet. Files saved by VidGrab show up here. Tap to play or view, long-press to delete.</string>
+    <string name="lib_cannot_open">No app can open this file</string>
+    <string name="lib_delete_title">Delete this file?</string>
+    <string name="lib_delete">Delete</string>
+    <string name="player_open_other">Open in another app</string>
+    <string name="player_error">Can\'t play this file in the app (%1$s).</string>
+    <string name="autopaste">Auto-paste copied links when the app opens</string>
+    <string name="pasted_toast">Pasted the copied link</string>
+    <string name="tagline">Paste a link, get your file.</string>
+    <string name="my_files">My Files</string>
+    <string name="search_files">Search files</string>
+    <string name="q_video_audio">Video + audio</string>
+    <string name="q_audio_only">Audio only</string>
+    <string name="q_hd">HD</string>
+    <string name="q_best">Best</string>
+    <string name="menu_open">Open</string>
+    <string name="menu_share">Share</string>
+    <string name="player_speed">Speed</string>
+<string name="q_best_quality">Best quality</string><string name="q_audio_mp3">Audio only (MP3)</string>
+    <string name="shield_pill_on">Shield %1$d</string>
+    <string name="shield_pill_off">Shield off</string>
+    <string name="browse_empty_title">Browse the web</string>
+    <string name="browse_empty_sub">Open a page, then tap Download to save its video. Ads from known hosts are hidden.</string>
+    <string name="browse_go">Search or enter address</string>
+    <string name="tab_send_title">Send</string>
+    <string name="tab_receive_title">Receive</string>
 </resources>

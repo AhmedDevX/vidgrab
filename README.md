@@ -8,6 +8,18 @@ Free, open-source, ad-free video downloader + local file sender, for **Android**
 - **Search and browse (v1.0.0):** YouTube search on Android and Windows. On Android, an in-app browser with a "Download this page" button, file downloads from web pages routed into the app, and a basic ad blocker (per-site shield, pop-up blocking). The ad-block list is derived from [EasyList](https://easylist.to) (see [docs/CREDITS.md](docs/CREDITS.md)).
 - **Your look, your language:** Light, Dark and Glass themes, in English or Arabic (full RTL), on both apps.
 
+## Screenshots
+
+> These are **rendered previews**, not photos of a real device. The Windows images are drawn by the app's own UI code (the search results shown are sample data, and the fingerprint is a throwaway test identity). The Android images come from the project's UI render tests (Robolectric). Real screenshots will replace them.
+
+| Windows: Download and search (Dark, English) | Windows: Receive (Light, Arabic) |
+|---|---|
+| ![Windows download page](docs/screenshots/windows-download-dark-en.png) | ![Windows receive page](docs/screenshots/windows-receive-light-ar.png) |
+
+| Android: Download and search (Dark, English) | Android: Send (Glass, Arabic) |
+|---|---|
+| <img src="docs/screenshots/android-download-dark-en.png" width="300" alt="Android download page"> | <img src="docs/screenshots/android-send-glass-ar.png" width="300" alt="Android send page"> |
+
 ## Honest scope (read this)
 
 - Site coverage = yt-dlp's coverage. It is large and growing, but no downloader supports *every* video on *every* site. Some sites block downloads or change often; updating the engine (in-app button / `pip install -U yt-dlp`) fixes most breakage.
@@ -146,3 +158,11 @@ Credits and dependency licenses: [docs/CREDITS.md](docs/CREDITS.md). This tool i
 3. لما البناء يخلص، حمّل الـartifacts: **VidGrab.exe** (شغّال من غير بايثون)، و**ملفات APK لأندرويد**، وملف `VidGrab-NOTICES.zip` (إشعارات التراخيص)، ومصدر ffmpeg المرافق للبرامج.
 مفيش نشر تلقائي. لو عايز لينكات تحميل عامة، اعمل Release بنفسك (**Releases** ← **Draft a new release**) وارفع عليه الملفات دي بعد ما تتأكد منها.
 - للموبايل نزّل ملف **arm64-v8a** (أغلب الموبايلات الحديثة). نسخة أندرويد دي نسخة تجريبية (debug) للتجربة الشخصية، وأندرويد هيسألك تسمح بالتثبيت من مصادر غير معروفة.
+
+## New in v8
+- Estimated size (approximate) next to each quality.
+- Files tab: filter by Video / Audio / Images / Other, tap to open, long-press to delete.
+- Android: in-app player, floating navigation bar.
+- Auto-paste of a copied link when the app is focused (Settings switch on Android, "Watch clipboard" on Windows). Android reads the clipboard only while the app is in the foreground.
+
+- v9: warm sand/taupe look (Dark/Light/Glass), My Files redesign with search and menu, quality rows, redesigned audio player.

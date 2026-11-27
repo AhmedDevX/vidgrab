@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.VidGrab" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/accent_dark</item>
+        <item name="colorSecondary">@color/accent_dark</item>
+        <item name="colorTertiary">@color/accent_dark</item>
+        <item name="colorOnPrimary">#FF2A1F14</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="materialCardViewStyle">@style/Widget.VidGrab.Card</item>
+        <item name="materialButtonStyle">@style/Widget.VidGrab.Button</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.VidGrab.Button.Outlined</item>
+        <item name="textInputStyle">@style/Widget.VidGrab.Input</item>
+    </style>
+</resources>

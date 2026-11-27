@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="nav_download" type="id" />
+    <item name="nav_library" type="id" />
+    <item name="nav_browse" type="id" />
+    <item name="nav_send" type="id" />
+    <item name="nav_receive" type="id" />
+    <item name="nav_settings" type="id" />
+</resources>

@@ -27,7 +27,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.yausername.youtubedl_android.YoutubeDL
@@ -44,7 +43,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var urlInput: EditText
     private lateinit var infoText: TextView
-    private lateinit var qualityGroup: RadioGroup
+    private lateinit var qualityGroup: android.widget.LinearLayout
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
 
@@ -66,6 +65,8 @@ class MainActivity : AppCompatActivity() {
     private var offerDialog: AlertDialog? = null
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private var directUrl: String? = null
+    private val qualityRows = mutableListOf<QualityRow>()
+    private var selectedQuality = 0
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -97,11 +98,18 @@ class MainActivity : AppCompatActivity() {
         fingerprintText = findViewById(R.id.fingerprintText)
         receiveQr = findViewById(R.id.receiveQr)
 
+        window.setBackgroundDrawable(Ui.background(this))
         QUALITIES.forEachIndexed { index, q ->
-            val rb = RadioButton(this).apply { text = q.label; id = index }
-            qualityGroup.addView(rb)
+            val row = QualityRow(this, q) { selectQuality(index) }
+            qualityGroup.addView(row.view)
+            qualityRows += row
         }
-        qualityGroup.check(0)
+        selectQuality(0)
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.downloadButton).apply {
+            backgroundTintList = null
+            setBackgroundResource(R.drawable.btn_gradient)
+            setTextColor(0xFF2A1F14.toInt())
+        }
 
         setupSearch()
         setupBrowser()
@@ -121,6 +129,8 @@ class MainActivity : AppCompatActivity() {
 
         setupBottomNav()
         setupSettings()
+        findViewById<TextView>(R.id.versionPill).text =
+            "v" + (try { packageManager.getPackageInfo(packageName, 0).versionName } catch (_: Exception) { "" })
         showOwnFingerprint()
 
         handleIntent(intent)
@@ -154,7 +164,7 @@ class MainActivity : AppCompatActivity() {
             this,
             onDownloadPage = { url ->
                 urlInput.setText(url)
-                findViewById<BottomNavigationView>(R.id.bottomNav).selectedItemId = R.id.nav_download
+                navBar.select(0)
                 fetchInfo()
             },
             onFileDownload = { req -> startFileDownload(req) },
@@ -270,28 +280,35 @@ class MainActivity : AppCompatActivity() {
 
     // ------------------------------------------------------------- navigation
 
+    private lateinit var navBar: NavBar
+    private var library: LibraryPage? = null
+
     private fun setupBottomNav() {
         val pages = listOf(
             findViewById<View>(R.id.pageDownload),
+            findViewById<View>(R.id.pageLibrary),
             findViewById<View>(R.id.pageBrowse),
             findViewById<View>(R.id.pageSend),
             findViewById<View>(R.id.pageReceive),
             findViewById<View>(R.id.pageSettings),
         )
-        val nav = findViewById<BottomNavigationView>(R.id.bottomNav)
-        nav.setOnItemSelectedListener { item ->
-            val idx = when (item.itemId) {
-                R.id.nav_download -> 0
-                R.id.nav_browse -> 1
-                R.id.nav_send -> 2
-                R.id.nav_receive -> 3
-                else -> 4
-            }
+        val lib = LibraryPage(this).also { it.build() }
+        library = lib
+        findViewById<android.widget.FrameLayout>(R.id.pageLibrary).addView(lib.root)
+        navBar = NavBar(this, listOf(
+            NavBar.Item(R.id.nav_download, R.drawable.ic_download, R.string.tab_download),
+            NavBar.Item(R.id.nav_library, R.drawable.ic_folder, R.string.tab_library),
+            NavBar.Item(R.id.nav_browse, R.drawable.ic_compass, R.string.tab_browse),
+            NavBar.Item(R.id.nav_send, R.drawable.ic_send, R.string.tab_send),
+            NavBar.Item(R.id.nav_receive, R.drawable.ic_inbox, R.string.tab_receive),
+            NavBar.Item(R.id.nav_settings, R.drawable.ic_gear, R.string.tab_settings),
+        )) { idx ->
             pages.forEachIndexed { i, v -> v.visibility = if (i == idx) View.VISIBLE else View.GONE }
-            if (idx == 2) ensureDiscovery()
-            true
+            if (idx == 1) library?.refresh()
+            if (idx == 3) ensureDiscovery()
         }
-        nav.selectedItemId = R.id.nav_download
+        findViewById<android.widget.FrameLayout>(R.id.navHost).addView(navBar.view)
+        navBar.select(0)
     }
 
     // ------------------------------------------------------------- settings
@@ -322,6 +339,10 @@ class MainActivity : AppCompatActivity() {
         val isArabic = resources.configuration.locales[0]?.language == "ar"
         findViewById<RadioButton>(if (isArabic) R.id.langAr else R.id.langEn).isChecked = true
 
+        findViewById<android.widget.CompoundButton>(R.id.autoPasteSwitch).apply {
+            isChecked = autoPasteEnabled()
+            setOnCheckedChangeListener { _, on -> prefs.edit().putBoolean("autopaste", on).apply() }
+        }
         findViewById<RadioGroup>(R.id.themeGroup).setOnCheckedChangeListener { _, id ->
             val name = when (id) {
                 R.id.themeLight -> "light"
@@ -360,6 +381,7 @@ class MainActivity : AppCompatActivity() {
     private fun fetchInfo() {
         val url = currentUrl() ?: return
         directUrl = null
+        applySizes(null, 0)
         infoText.text = getString(R.string.fetching)
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -370,6 +392,9 @@ class MainActivity : AppCompatActivity() {
                     Engine.jsRuntimeOption(this@MainActivity)?.let { req.addOption(it.first, it.second) }
                     val info = YoutubeDL.getInstance().getInfo(req)
                     val mins = info.duration.let { if (it > 0) " - ${it / 60} min" else "" }
+                    val fmts = (info.formats ?: arrayListOf()).map { SizeEstimate.fromVideoFormat(it) }
+                    val dur = info.duration.toLong()
+                    runOnUiThread { applySizes(fmts, dur) }
                     "${info.title}$mins"
                 } catch (e: Exception) {
                     // yt-dlp has no extractor: maybe a plain direct file link.
@@ -391,9 +416,46 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Put an estimated size next to each quality (null formats = clear). */
+    fun applySizes(fmts: List<Fmt>?, durationSec: Long) {
+        QUALITIES.forEachIndexed { i, q ->
+            val maxH = Regex("height<=(\\d+)").find(q.format)?.groupValues?.get(1)?.toInt()
+            qualityRows.getOrNull(i)?.setSize(if (fmts == null) null else {
+                val est = SizeEstimate.estimate(fmts, maxH, q.audioOnly, durationSec)
+                if (est != null) SizeEstimate.format(est) else getString(R.string.size_unknown_q)
+            })
+        }
+    }
+
+    private fun selectQuality(i: Int) {
+        selectedQuality = i
+        qualityRows.forEachIndexed { k, r -> r.setSelected(k == i) }
+    }
+
+    // ---------------------------------------------------------- auto-paste
+
+    private fun autoPasteEnabled() = prefs.getBoolean("autopaste", true)
+
+    /** Android 10+ lets only the focused foreground app read the clipboard,
+     *  so this runs when the window gains focus. */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus || !autoPasteEnabled()) return
+        val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        val text = try {
+            cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
+        } catch (_: Exception) { null }
+        val url = ClipLink.pick(text, urlInput.text.toString(), prefs.getString("last_pasted", null))
+            ?: return
+        prefs.edit().putString("last_pasted", url).apply()
+        urlInput.setText(url)
+        directUrl = null
+        toast(getString(R.string.pasted_toast))
+    }
+
     private fun startDownload() {
         val url = currentUrl() ?: return
-        val quality = QUALITIES[qualityGroup.checkedRadioButtonId.coerceIn(0, QUALITIES.size - 1)]
+        val quality = QUALITIES[selectedQuality.coerceIn(0, QUALITIES.size - 1)]
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -448,6 +510,7 @@ class MainActivity : AppCompatActivity() {
             else -> s.line
         }
         if (s.error != null) showErrorOnce(s.error)
+        if (s.done) library?.refresh()
     }
 
     private fun showErrorOnce(err: String) {

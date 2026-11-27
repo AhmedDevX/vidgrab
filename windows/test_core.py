@@ -95,3 +95,51 @@ def test_format_duration():
 
 def test_search_empty_query():
     assert core.search("   ") == []
+
+
+FMTS = [
+    {"height": 1080, "vcodec": "avc1", "acodec": "none", "filesize": 200_000_000},
+    {"height": 720, "vcodec": "avc1", "acodec": "none", "filesize_approx": 100_000_000},
+    {"height": 360, "vcodec": "avc1", "acodec": "none", "tbr": 500},
+    {"height": 0, "vcodec": "none", "acodec": "opus", "filesize": 10_000_000},
+    {"height": 0, "vcodec": "none", "acodec": "opus", "filesize": 4_000_000},
+    {"height": 480, "vcodec": "avc1", "acodec": "aac", "filesize": 60_000_000},
+]
+
+
+def test_estimate_size_quality_levels():
+    assert core.estimate_size(FMTS, None, False, 100) == 210_000_000
+    assert core.estimate_size(FMTS, 720, False, 100) == 110_000_000
+    assert core.estimate_size(FMTS, 480, False, 100) == 60_000_000
+    assert core.estimate_size(FMTS, None, True, 100) == 10_000_000
+
+
+def test_estimate_size_bitrate_and_unknown():
+    assert core.estimate_size(FMTS, 360, False, 100) == 6_250_000 + 10_000_000
+    assert core.estimate_size(FMTS, 360, False, 0) is None
+    assert core.estimate_size([], None, False, 100) is None
+    assert core.estimate_size(FMTS, 144, False, 100) is None
+
+
+def test_format_size():
+    assert core.format_size(300_400_000) == "~300 MB"
+    assert core.format_size(1_500_000_000) == "~1.5 GB"
+
+
+def test_file_kind_and_listing(tmp_path):
+    for n in ("a.mp4", "b.MP3", "c.jpg", "d.pdf", "e.part"):
+        (tmp_path / n).write_bytes(b"x")
+    rows = core.list_downloads(str(tmp_path))
+    assert sorted(r[1] for r in rows) == ["a.mp4", "b.MP3", "c.jpg", "d.pdf"]
+    kinds = {r[1]: r[4] for r in rows}
+    assert kinds == {"a.mp4": "video", "b.MP3": "audio", "c.jpg": "image", "d.pdf": "other"}
+    assert core.list_downloads(str(tmp_path / "missing")) == []
+
+
+def test_pick_clip_url():
+    assert core.pick_clip_url("see https://a.com/x ok", "", None) == "https://a.com/x"
+    assert core.pick_clip_url("nothing", "", None) is None
+    assert core.pick_clip_url(None, "", None) is None
+    assert core.pick_clip_url("https://a.com/x", "https://a.com/x", None) is None
+    assert core.pick_clip_url("https://a.com/x", "", "https://a.com/x") is None
+    assert core.pick_clip_url("https://b.com", "https://a.com", "https://a.com") == "https://b.com"

@@ -38,6 +38,7 @@ class ShareActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_share)
+        window.setBackgroundDrawable(Ui.background(this))
 
         filesText = findViewById(R.id.shareFilesText)
         toggleButton = findViewById(R.id.shareToggleButton)
