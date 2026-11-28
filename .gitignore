@@ -26,3 +26,7 @@ Thumbs.db
 # fetched ffmpeg binaries (see windows/vendor/README.md)
 windows/vendor/ffmpeg.exe
 windows/vendor/ffprobe.exe
+
+vidgrab-source-v11-*.zip
+
+windows/*.zip

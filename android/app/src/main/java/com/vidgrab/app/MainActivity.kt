@@ -55,6 +55,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var receiveStatus: TextView
     private lateinit var fingerprintText: TextView
     private lateinit var receiveQr: ImageView
+    private lateinit var sendModeGroup: com.google.android.material.button.MaterialButtonToggleGroup
+    private lateinit var sendHint: TextView
+
+    /** "nearby" (Bluetooth + Wi-Fi Direct) or "wifi" (same network). */
+    private var sendMode = "nearby"
+    private var nearbySender: NearbySender? = null
+    private var nearbyPeers = listOf<NearbyPeer>()
+    private var codeDialog: AlertDialog? = null
+    private var pendingNearbyAction: (() -> Unit)? = null
+    private var onNearbyDenied: (() -> Unit)? = null
 
     private val prefs by lazy { getSharedPreferences("vidgrab_settings", MODE_PRIVATE) }
     private val pinStore by lazy { PinStore(this) }
@@ -70,6 +80,16 @@ class MainActivity : AppCompatActivity() {
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    private val nearbyPermission =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val ok = result.isNotEmpty() && result.values.all { it }
+            val action = pendingNearbyAction
+            val denied = onNearbyDenied
+            pendingNearbyAction = null
+            onNearbyDenied = null
+            if (ok) action?.invoke() else denied?.invoke()
+        }
 
     private val pickFiles =
         registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -126,6 +146,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ShareActivity::class.java))
         }
         receiveButton.setOnClickListener { toggleReceive() }
+        setupSendMode()
 
         setupBottomNav()
         setupSettings()
@@ -139,6 +160,16 @@ class MainActivity : AppCompatActivity() {
         }
         lifecycleScope.launch {
             ReceiveBus.state.collect { s -> renderReceive(s) }
+        }
+        lifecycleScope.launch {
+            ReceiveBus.pendingCode.collect { pair ->
+                if (pair == null) {
+                    codeDialog?.dismiss()
+                    codeDialog = null
+                } else if (codeDialog?.isShowing != true) {
+                    showIncomingCode(pair.first, pair.second)
+                }
+            }
         }
         lifecycleScope.launch {
             ReceiveBus.pendingOffer.collect { text ->
@@ -275,6 +306,10 @@ class MainActivity : AppCompatActivity() {
         offerDialog = null
         nsd?.close()
         nsd = null
+        nearbySender?.close()
+        nearbySender = null
+        codeDialog?.dismiss()
+        codeDialog = null
         super.onDestroy()
     }
 
@@ -550,12 +585,110 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupSendMode() {
+        sendModeGroup = findViewById(R.id.sendModeGroup)
+        sendHint = findViewById(R.id.sendHint)
+        sendMode = prefs.getString("send_mode", "nearby") ?: "nearby"
+        sendModeGroup.check(if (sendMode == "wifi") R.id.sendModeWifi else R.id.sendModeNearby)
+        tintSendMode()
+        applySendModeLabels()
+        sendModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            sendMode = if (checkedId == R.id.sendModeWifi) "wifi" else "nearby"
+            prefs.edit().putString("send_mode", sendMode).apply()
+            tintSendMode()
+            applySendModeLabels()
+            renderDevices()
+        }
+    }
+
+    /** Selected pill in the app's sand accent with dark text, not the
+     *  default violet Material tint. */
+    private fun tintSendMode() {
+        val sand = 0xFFD9BC90.toInt()
+        val ink = 0xFF2A1F14.toInt()
+        for (i in 0 until sendModeGroup.childCount) {
+            val b = sendModeGroup.getChildAt(i) as? com.google.android.material.button.MaterialButton
+                ?: continue
+            val on = b.isChecked
+            b.backgroundTintList =
+                android.content.res.ColorStateList.valueOf(if (on) sand else 0x00000000)
+            b.setTextColor(if (on) ink else Ui.secondaryText(this))
+        }
+    }
+
+    private fun applySendModeLabels() {
+        sendHint.text = getString(
+            if (sendMode == "nearby") R.string.send_hint_nearby else R.string.send_hint)
+        if (sendMode == "wifi") {
+            nearbySender?.stopDiscovery()
+            nearbyPeers = emptyList()
+        } else {
+            nsd?.stopDiscovery()
+            devices = emptyList()
+        }
+    }
+
+    /** Permissions the nearby transport needs on this Android version. */
+    private fun nearbyPermissions(): List<String> {
+        val perms = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= 31) {
+            perms += Manifest.permission.BLUETOOTH_SCAN
+            perms += Manifest.permission.BLUETOOTH_CONNECT
+            perms += Manifest.permission.BLUETOOTH_ADVERTISE
+        } else {
+            perms += Manifest.permission.ACCESS_FINE_LOCATION
+        }
+        if (Build.VERSION.SDK_INT >= 33) perms += Manifest.permission.NEARBY_WIFI_DEVICES
+        return perms
+    }
+
+    private fun missingNearbyPermissions(): Array<String> =
+        nearbyPermissions().filter {
+            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }.toTypedArray()
+
     private fun refreshDevices() {
-        ensureDiscovery()
+        if (sendMode == "nearby") startNearbyDiscovery() else ensureDiscovery()
         renderDevices()
     }
 
+    private fun startNearbyDiscovery() {
+        if (!NearbyLink.available(this)) {
+            devicesHint.text = getString(R.string.nearby_unavailable)
+            return
+        }
+        val missing = missingNearbyPermissions()
+        if (missing.isNotEmpty()) {
+            pendingNearbyAction = { startNearbyDiscovery() }
+            onNearbyDenied = { devicesHint.text = getString(R.string.nearby_perm_needed) }
+            nearbyPermission.launch(missing)
+            return
+        }
+        if (nearbySender == null) {
+            nearbySender = NearbySender(this, "VidGrab-${ownDeviceId()}").apply {
+                onPeers = { list ->
+                    nearbyPeers = list.filter { it.deviceId != ownDeviceId() }
+                    runOnUiThread { renderDevices() }
+                }
+                confirmCode = { peerName, digits -> askNearbyCode(peerName, digits) }
+            }
+        }
+        nearbySender?.startDiscovery()
+        devicesHint.text = getString(R.string.nearby_searching)
+    }
+
     private fun renderDevices() {
+        if (sendMode == "nearby") {
+            devicesHint.text = if (nearbyPeers.isEmpty()) {
+                getString(R.string.no_devices)
+            } else ""
+            val labels = nearbyPeers.map { it.name }
+            deviceList.adapter =
+                ArrayAdapter(this, android.R.layout.simple_list_item_single_choice, labels)
+            if (nearbyPeers.isNotEmpty()) deviceList.setItemChecked(0, true)
+            return
+        }
         devicesHint.text = if (devices.isEmpty()) getString(R.string.no_devices) else ""
         val labels = devices.map { "${it.serviceName}   (${it.host})" }
         deviceList.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_single_choice, labels)
@@ -567,6 +700,60 @@ class MainActivity : AppCompatActivity() {
             filesLabel.text = getString(R.string.pick_first)
             return
         }
+        if (sendMode == "nearby") sendNearby() else sendSameWifi()
+    }
+
+    /** Nearby link: Bluetooth finds the phone, Wi-Fi Direct moves the bytes. */
+    private fun sendNearby() {
+        val idx = deviceList.checkedItemPosition
+        if (idx < 0 || idx >= nearbyPeers.size) {
+            sendStatus.text = getString(R.string.pick_device)
+            return
+        }
+        val peer = nearbyPeers[idx]
+        val items = mutableListOf<SendItem>()
+        for (uri in pickedUris) {
+            val name = displayName(uri)
+            val size = querySize(uri)
+            if (size <= 0) {
+                sendStatus.text = getString(R.string.send_failed, "cannot determine size of $name")
+                return
+            }
+            items += SendItem(name, size) {
+                contentResolver.openFileDescriptor(uri, "r")
+                    ?: throw TransferException("cannot read $name")
+            }
+        }
+        sendStatus.text = getString(R.string.nearby_connecting)
+        lifecycleScope.launch {
+            val sender = nearbySender ?: return@launch
+            var progressName = ""
+            var progressStart = 0L
+            try {
+                val saved = sender.send(
+                    peer, items,
+                    onStatus = { name ->
+                        handler.post { sendStatus.text = "${getString(R.string.sending)} $name" }
+                    },
+                    onProgress = { name, sent, total ->
+                        if (name != progressName) {
+                            progressName = name
+                            progressStart = System.nanoTime()
+                        }
+                        val line = ProgressText.line(
+                            this@MainActivity, name, sent, total, progressStart)
+                        handler.post { sendStatus.text = line }
+                    },
+                )
+                sendStatus.text = getString(R.string.sent_ok, saved.joinToString(", "))
+            } catch (e: Exception) {
+                sendStatus.text =
+                    getString(R.string.send_failed, (e.message ?: e.toString()).take(200))
+            }
+        }
+    }
+
+    private fun sendSameWifi() {
         val idx = deviceList.checkedItemPosition
         if (idx < 0 || idx >= devices.size) {
             sendStatus.text = getString(R.string.pick_device)
@@ -643,6 +830,57 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
+    /** 4-digit code from Nearby's own connection token, compared on both screens. */
+    private suspend fun askNearbyCode(peerName: String, digits: String): Boolean =
+        withContext(Dispatchers.Main) {
+            suspendCancellableCoroutine { cont ->
+                codeDialog = AlertDialog.Builder(this@MainActivity)
+                    .setTitle(getString(R.string.nearby_code_title))
+                    .setMessage(getString(R.string.nearby_code_peer, peerName))
+                    .setView(codeView(digits))
+                    .setPositiveButton(getString(R.string.code_matches)) { _, _ ->
+                        if (cont.isActive) cont.resume(true)
+                    }
+                    .setNegativeButton(getString(R.string.code_mismatch)) { _, _ ->
+                        if (cont.isActive) cont.resume(false)
+                    }
+                    .setOnCancelListener { if (cont.isActive) cont.resume(false) }
+                    .show()
+            }
+        }
+
+    private fun codeView(digits: String): View {
+        val tv = TextView(this)
+        tv.text = NearbyLink.spaced(digits)
+        tv.textSize = 40f
+        tv.letterSpacing = 0.12f
+        tv.gravity = android.view.Gravity.CENTER
+        tv.setTextColor(Ui.primaryText(this))
+        tv.setPadding(0, Ui.dp(tv, 22), 0, Ui.dp(tv, 18))
+        return tv
+    }
+
+    /** Nearby phone asking to connect (receive side): confirm the code. */
+    private fun showIncomingCode(peerName: String, digits: String) {
+        codeDialog = AlertDialog.Builder(this)
+            .setTitle(getString(R.string.nearby_code_title))
+            .setMessage(getString(R.string.nearby_code_peer, peerName))
+            .setView(codeView(digits))
+            .setPositiveButton(getString(R.string.accept)) { _, _ ->
+                startService(Intent(this, ReceiveService::class.java)
+                    .setAction(ReceiveService.ACTION_CODE_ACCEPT))
+            }
+            .setNegativeButton(getString(R.string.decline)) { _, _ ->
+                startService(Intent(this, ReceiveService::class.java)
+                    .setAction(ReceiveService.ACTION_CODE_DECLINE))
+            }
+            .setOnCancelListener {
+                startService(Intent(this, ReceiveService::class.java)
+                    .setAction(ReceiveService.ACTION_CODE_DECLINE))
+            }
+            .show()
+    }
+
     private fun displayName(uri: Uri): String {
         contentResolver.query(uri, null, null, null, null)?.use { c ->
             val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -670,21 +908,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun showOwnFingerprint() {
         val fp = Identity.loadOrCreate(this).fingerprint.uppercase()
-        fingerprintText.text = fp.chunked(8).chunked(4)
+        // Two 8-character blocks per line: four per line overflowed the
+        // card on a 360dp screen.
+        fingerprintText.text = fp.chunked(8).chunked(2)
             .joinToString("\n") { it.joinToString("   ") }
     }
 
     private fun toggleReceive() {
         if (receiving) {
             ReceiveService.stop(this)
-        } else {
-            if (Build.VERSION.SDK_INT >= 33 &&
-                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            ReceiveService.start(this)
+            return
         }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        val missing = if (NearbyLink.available(this)) missingNearbyPermissions() else emptyArray()
+        if (missing.isNotEmpty()) {
+            pendingNearbyAction = { ReceiveService.start(this) }
+            onNearbyDenied = { ReceiveService.start(this) }
+            nearbyPermission.launch(missing)
+            return
+        }
+        ReceiveService.start(this)
     }
 
     /** In-app accept/decline for an incoming offer; the notification action
@@ -720,6 +967,7 @@ class MainActivity : AppCompatActivity() {
             if (s.active) R.string.receive_stop else R.string.receive_start)
         receiveStatus.text = when {
             s.status != null -> s.status
+            s.active && s.nearby -> getString(R.string.receive_active_nearby, s.deviceName ?: "")
             s.active -> getString(R.string.receive_active, s.deviceName ?: "")
             else -> getString(R.string.receive_idle)
         }

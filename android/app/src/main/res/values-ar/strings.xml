@@ -123,4 +123,17 @@
     <string name="browse_go">ابحث أو اكتب عنوانا</string>
     <string name="tab_send_title">إرسال</string>
     <string name="tab_receive_title">استلام</string>
+    <string name="send_mode_nearby">قريب</string>
+    <string name="send_mode_wifi">نفس الواي فاي</string>
+    <string name="send_hint_nearby">الهواتف القريبة التي عليها فيدجراب تظهر هنا. البلوتوث يتصل بها ثم الواي فاي دايركت ينقل الملف، فلا حاجة لشبكة مشتركة.</string>
+    <string name="nearby_searching">بجيب هواتف قريبة...</string>
+    <string name="nearby_unavailable">الميزة القريبة غير متاحة على هذا الهاتف (لا توجد خدمات جوجل). استخدم نفس الواي فاي.</string>
+    <string name="nearby_perm_needed">الميزة القريبة تحتاج إذن البلوتوث والأجهزة القريبة للعثور على الهواتف.</string>
+    <string name="nearby_connecting">بيتصل...</string>
+    <string name="nearby_code_title">أكد الرمز</string>
+    <string name="nearby_code_peer">%1$s (غير موثّق) يريد الاتصال. لازم نفس الرمز يظهر على الهاتفين.</string>
+    <string name="nearby_code_status">%1$s يريد الاتصال. الرمز %2$s.</string>
+    <string name="nearby_code_notification">%1$s يريد الاتصال. افتح فيدجراب وتأكد من الرمز %2$s.</string>
+    <string name="receive_active_nearby">ظاهر للهواتف القريبة بالبلوتوث والواي فاي دايركت، ولأجهزة فيدجراب على نفس الواي فاي باسم \"%1$s\".</string>
+    <string name="identity_title">بصمة الجهاز</string>
 </resources>

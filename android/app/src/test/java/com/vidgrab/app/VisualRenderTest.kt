@@ -57,7 +57,14 @@ class VisualRenderTest {
         ))
     }
 
-    private fun render(tag: String, pageIndex: Int, lang: String, theme: String, picker: Boolean = false) {
+    private fun render(
+        tag: String,
+        pageIndex: Int,
+        lang: String,
+        theme: String,
+        picker: Boolean = false,
+        nearbyReceive: Boolean = false,
+    ) {
         val app = ApplicationProvider.getApplicationContext<Context>()
         app.getSharedPreferences("vidgrab_settings", Context.MODE_PRIVATE)
             .edit().putString("theme", theme).commit()
@@ -70,6 +77,15 @@ class VisualRenderTest {
         // Real click-through navigation, same path as a user tap.
         activity.findViewById<View>(navIds[pageIndex]).performClick()
         if (pageIndex == 1) fillLibrary(activity)
+        if (nearbyReceive) {
+            ReceiveBus.state.value = ReceiveBus.State(
+                active = true,
+                deviceName = "VidGrab-1a2b3c4d",
+                fingerprint = "9f2c1e7b4a5d8c30b6e1f4a7d2c9b5e83a6f1d0c7b2e4a9d6c3f8b1e5a0d7c42",
+                nearby = true,
+            )
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        }
         if (picker) {
             val fm = MainActivity::class.java.getMethod("applySizes", List::class.java, Long::class.java)
                 .apply { isAccessible = true }
@@ -142,4 +158,58 @@ class VisualRenderTest {
 
     @Test
     fun k_renderEnGlassSettings() = render("en_glass_settings", 5, "en", "glass")
+
+    @Test
+    fun l_renderEnDarkSendNearby() = render("en_dark_send_nearby", 3, "en", "dark")
+
+    @Test
+    fun m_renderArLightSendNearby() = render("ar_light_send_nearby", 3, "ar", "light")
+
+    @Test
+    fun n_renderEnDarkReceiveNearby() = render("en_dark_receive_nearby", 4, "en", "dark", nearbyReceive = true)
+
+    /**
+     * The 4-digit confirm dialog, drawn for review. Robolectric dialogs are
+     * real windows; the decor view is measured/laid out by hand here.
+     */
+    @Test
+    fun o_renderCodeDialog() {
+        val app = ApplicationProvider.getApplicationContext<Context>()
+        app.getSharedPreferences("vidgrab_settings", Context.MODE_PRIVATE)
+            .edit().putString("theme", "dark").commit()
+        RuntimeEnvironment.setQualifiers("en-w360dp-h780dp-xxhdpi")
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val m = MainActivity::class.java.getDeclaredMethod(
+            "showIncomingCode", String::class.java, String::class.java)
+            .apply { isAccessible = true }
+        m.invoke(activity, "VidGrab-7c4e9a12", "4821")
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+
+        val dialog = org.robolectric.shadows.ShadowDialog.getLatestDialog()
+        if (dialog != null && dialog.isShowing) {
+            val decor = dialog.window!!.decorView
+            decor.measure(
+                View.MeasureSpec.makeMeasureSpec(960, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            )
+            decor.layout(0, 0, decor.measuredWidth, decor.measuredHeight)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            val bmp = Bitmap.createBitmap(
+                decor.measuredWidth.coerceAtLeast(1),
+                decor.measuredHeight.coerceAtLeast(1),
+                Bitmap.Config.ARGB_8888)
+            decor.draw(Canvas(bmp))
+            val dir = File("build/outputs/visual")
+            dir.mkdirs()
+            FileOutputStream(File(dir, "en_dark_code_dialog.png")).use {
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
+        }
+        try {
+            controller.pause().stop().destroy()
+        } catch (e: Exception) {
+        }
+        RuntimeEnvironment.setQualifiers("")
+    }
 }

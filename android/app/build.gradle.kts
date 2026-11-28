@@ -13,7 +13,9 @@ android {
         minSdk = 29
         targetSdk = 34
         versionCode = 1
-        versionName = "0.1.0"
+        // A tag build (GitHub Actions) passes -PvidgrabVersionName=v11.
+        versionName = (project.findProperty("vidgrabVersionName") as String?)
+            ?.removePrefix("v") ?: "0.1.0"
     }
 
     // Per-architecture APKs so phones download a small APK instead of the
@@ -90,6 +92,11 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.3.1")
 
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+
+    // Nearby Connections (Bluetooth discovery + Wi-Fi Direct/hotspot data).
+    // Google Play services library; the transport itself is free and needs
+    // no server. The same-Wi-Fi path does not depend on it.
+    implementation("com.google.android.gms:play-services-nearby:19.3.0")
 
     // QR code generation for the sharing link (Apache-2.0).
     implementation("com.google.zxing:core:3.5.4")

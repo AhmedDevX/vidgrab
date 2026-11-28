@@ -123,4 +123,17 @@
     <string name="browse_go">Search or enter address</string>
     <string name="tab_send_title">Send</string>
     <string name="tab_receive_title">Receive</string>
+    <string name="send_mode_nearby">Nearby</string>
+    <string name="send_mode_wifi">Same Wi-Fi</string>
+    <string name="send_hint_nearby">Phones near you running VidGrab appear here. Bluetooth connects them, then Wi-Fi Direct moves the file, so no shared network is needed.</string>
+    <string name="nearby_searching">Looking for nearby phones...</string>
+    <string name="nearby_unavailable">Nearby is not available on this phone (no Google Play services). Use Same Wi-Fi.</string>
+    <string name="nearby_perm_needed">Nearby needs the Bluetooth and nearby-devices permissions to find phones.</string>
+    <string name="nearby_connecting">Connecting...</string>
+    <string name="nearby_code_title">Confirm the code</string>
+    <string name="nearby_code_peer">%1$s (unverified) wants to connect. Both phones must show the same code.</string>
+    <string name="nearby_code_status">%1$s wants to connect. Code %2$s.</string>
+    <string name="nearby_code_notification">%1$s wants to connect. Open VidGrab and check code %2$s.</string>
+    <string name="receive_active_nearby">Visible to nearby phones over Bluetooth + Wi-Fi Direct, and to VidGrab on this Wi-Fi as \"%1$s\".</string>
+    <string name="identity_title">Device fingerprint</string>
 </resources>

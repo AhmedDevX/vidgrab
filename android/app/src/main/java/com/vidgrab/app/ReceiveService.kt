@@ -24,6 +24,8 @@ object ReceiveBus {
         val deviceName: String? = null,
         val status: String? = null,
         val fingerprint: String? = null,
+        /** Nearby (Bluetooth + Wi-Fi Direct) advertising is running. */
+        val nearby: Boolean = false,
     )
     val state = MutableStateFlow(State())
 
@@ -35,6 +37,10 @@ object ReceiveBus {
      *  in-app accept/decline dialog from this (the notification covers the
      *  backgrounded case). */
     val pendingOffer = MutableStateFlow<String?>(null)
+
+    /** Non-null while a nearby phone asks to connect: name to 4-digit code. */
+    val pendingCode = MutableStateFlow<Pair<String, String>?>(null)
+    var pendingCodeRespond: ((Boolean) -> Unit)? = null
 }
 
 /**
@@ -51,9 +57,12 @@ class ReceiveService : Service() {
         const val ACTION_STOP = "com.vidgrab.app.RECEIVE_STOP"
         const val ACTION_ACCEPT = "com.vidgrab.app.OFFER_ACCEPT"
         const val ACTION_DECLINE = "com.vidgrab.app.OFFER_DECLINE"
+        const val ACTION_CODE_ACCEPT = "com.vidgrab.app.CODE_ACCEPT"
+        const val ACTION_CODE_DECLINE = "com.vidgrab.app.CODE_DECLINE"
         private const val NOTIF_ID = 3
         private const val OFFER_NOTIF_ID = 4
         private const val DONE_NOTIF_ID = 5
+        private const val CODE_NOTIF_ID = 6
 
         fun start(context: Context) {
             context.startForegroundService(
@@ -69,6 +78,7 @@ class ReceiveService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var server: TransferServer? = null
     private var nsd: Nsd? = null
+    private var nearby: NearbyReceiver? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private lateinit var identity: Identity
     private var lastRxFile = ""
@@ -81,10 +91,43 @@ class ReceiveService : Service() {
             ACTION_STOP -> stopReceiving()
             ACTION_ACCEPT -> resolveOffer(true)
             ACTION_DECLINE -> resolveOffer(false)
+            ACTION_CODE_ACCEPT -> resolveCode(true)
+            ACTION_CODE_DECLINE -> resolveCode(false)
             ACTION_START -> startReceiving()
             else -> stopSelf()
         }
         return START_STICKY
+    }
+
+    /** Shared receive callbacks: same-Wi-Fi and nearby transports both
+     *  report through these so the UI shows one consistent state. */
+    private val transferUi = object : TransferUi {
+            override fun decideOffer(
+                senderName: String, filename: String, size: Long,
+                respond: (Boolean) -> Unit,
+            ) = onOffer(senderName, filename, size, respond)
+
+            override fun onProgress(filename: String, received: Long, total: Long) {
+                if (filename != lastRxFile) {
+                    lastRxFile = filename
+                    rxStartNanos = System.nanoTime()
+                }
+                ReceiveBus.state.value = ReceiveBus.state.value.copy(
+                    status = ProgressText.line(
+                        this@ReceiveService, filename, received, total, rxStartNanos))
+            }
+
+            override fun onDone(filename: String, savedPath: String) {
+                ReceiveBus.state.value = ReceiveBus.state.value.copy(
+                    status = getString(R.string.receive_done, filename, savedPath))
+                doneNotification(filename, savedPath)
+            }
+
+            override fun onFailed(filename: String, reason: String) {
+                ReceiveBus.state.value = ReceiveBus.state.value.copy(
+                    status = getString(R.string.receive_failed, reason))
+                failedNotification(filename)
+            }
     }
 
     private fun receiveDir(): File =
@@ -95,42 +138,28 @@ class ReceiveService : Service() {
         try {
             identity = Identity.loadOrCreate(this)
             val name = "VidGrab-${identity.deviceId}"
-            val srv = TransferServer(0, identity, receiveDir(), object : TransferUi {
-                override fun decideOffer(
-                    senderName: String, filename: String, size: Long,
-                    respond: (Boolean) -> Unit,
-                ) = onOffer(senderName, filename, size, respond)
-
-                override fun onProgress(filename: String, received: Long, total: Long) {
-                    if (filename != lastRxFile) {
-                        lastRxFile = filename
-                        rxStartNanos = System.nanoTime()
-                    }
-                    ReceiveBus.state.value = ReceiveBus.state.value.copy(
-                        status = ProgressText.line(
-                            this@ReceiveService, filename, received, total, rxStartNanos))
-                }
-
-                override fun onDone(filename: String, savedPath: String) {
-                    ReceiveBus.state.value = ReceiveBus.state.value.copy(
-                        status = getString(R.string.receive_done, filename, savedPath))
-                    doneNotification(filename, savedPath)
-                }
-
-                override fun onFailed(filename: String, reason: String) {
-                    ReceiveBus.state.value = ReceiveBus.state.value.copy(
-                        status = getString(R.string.receive_failed, reason))
-                    failedNotification(filename)
-                }
-            }, openTarget = { name, _ -> downloadsTarget(name) })
+            val srv = TransferServer(0, identity, receiveDir(), transferUi,
+                openTarget = { name, _ -> downloadsTarget(name) })
             srv.makeSecure(identity.serverSocketFactory())
             srv.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
             server = srv
             val discovery = Nsd(this)
             discovery.advertise(name, srv.listeningPort, identity.deviceId, identity.fingerprint)
             nsd = discovery
+            // Nearby (Bluetooth + Wi-Fi Direct) alongside the same-Wi-Fi
+            // server: one "receiving on" switch, both transports listening.
+            val nearbyOn = NearbyLink.available(this)
+            if (nearbyOn) {
+                nearby = NearbyReceiver(
+                    this, name, identity.deviceId,
+                    ui = transferUi,
+                    askCode = { peer, digits, respond -> onCodeRequest(peer, digits, respond) },
+                    openTarget = { fileName, _ -> downloadsTarget(fileName) },
+                ).also { it.start() }
+            }
             ReceiveBus.state.value = ReceiveBus.State(
-                active = true, deviceName = name, fingerprint = identity.fingerprint)
+                active = true, deviceName = name,
+                fingerprint = identity.fingerprint, nearby = nearbyOn)
             startForeground(NOTIF_ID, ongoingNotification(name))
             val pm = getSystemService(POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "vidgrab:receive")
@@ -182,6 +211,34 @@ class ReceiveService : Service() {
         ReceiveBus.pendingOffer.value = null
         val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
         nm.cancel(OFFER_NOTIF_ID)
+    }
+
+    /** A nearby phone asked to connect: show its 4-digit code for comparison. */
+    private fun onCodeRequest(peerName: String, digits: String, respond: (Boolean) -> Unit) {
+        ReceiveBus.pendingCodeRespond = respond
+        ReceiveBus.pendingCode.value = peerName to digits
+        ReceiveBus.state.value = ReceiveBus.state.value.copy(
+            status = getString(R.string.nearby_code_status, peerName, digits))
+        Notifs.ensureChannel(this)
+        val openApp = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val notif: Notification = Notifs.builder(this)
+            .setContentTitle(getString(R.string.nearby_code_title))
+            .setContentText(getString(R.string.nearby_code_notification, peerName, digits))
+            .setContentIntent(openApp)
+            .setOngoing(true)
+            .build()
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        nm.notify(CODE_NOTIF_ID, notif)
+    }
+
+    private fun resolveCode(accepted: Boolean) {
+        ReceiveBus.pendingCodeRespond?.invoke(accepted)
+        ReceiveBus.pendingCodeRespond = null
+        ReceiveBus.pendingCode.value = null
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        nm.cancel(CODE_NOTIF_ID)
     }
 
     /** Stream uploads straight into a PENDING public Downloads/VidGrab
@@ -295,6 +352,8 @@ class ReceiveService : Service() {
         server = null
         nsd?.close()
         nsd = null
+        nearby?.stop()
+        nearby = null
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
     }

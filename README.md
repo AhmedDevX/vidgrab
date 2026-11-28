@@ -3,7 +3,7 @@
 Free, open-source, ad-free video downloader + local file sender, for **Android** and **Windows**.
 
 - **Download videos:** share a video link to the app (or paste it), pick a quality (1080p / 720p / ... / MP3 audio), download with progress. Powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp), which supports [hundreds of sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
-- **Send files directly between devices:** devices running VidGrab on the same Wi-Fi find each other automatically; pick a device, confirm the fingerprint code against its screen, the recipient accepts, and the file moves over an authenticated, encrypted (TLS) connection. No cables, no accounts, no cloud.
+- **Send files directly between devices:** on Android, two phones find each other over Bluetooth and move the file over Wi-Fi Direct (Google Nearby Connections) - no shared Wi-Fi needed - with the same 4-digit code shown on both screens to confirm the link. On the same Wi-Fi network (Android and Windows) devices find each other automatically and the file moves over an authenticated, encrypted (TLS) connection after a full-fingerprint comparison. No cables, no accounts, no cloud.
 - **Browser fallback:** for devices without the app (iPhone, Mac, Linux, anything with a browser), an optional token-link + QR flow remains - explicitly started, clearly marked unencrypted.
 - **Search and browse (v1.0.0):** YouTube search on Android and Windows. On Android, an in-app browser with a "Download this page" button, file downloads from web pages routed into the app, and a basic ad blocker (per-site shield, pop-up blocking). The ad-block list is derived from [EasyList](https://easylist.to) (see [docs/CREDITS.md](docs/CREDITS.md)).
 - **Your look, your language:** Light, Dark and Glass themes, in English or Arabic (full RTL), on both apps.
@@ -24,7 +24,7 @@ Free, open-source, ad-free video downloader + local file sender, for **Android**
 
 - Site coverage = yt-dlp's coverage. It is large and growing, but no downloader supports *every* video on *every* site. Some sites block downloads or change often; updating the engine (in-app button / `pip install -U yt-dlp`) fixes most breakage.
 - **DRM-protected content (paid streaming services, encrypted video) is not supported and will not be added.**
-- **Native transfer is same-Wi-Fi only** (Windows and Android; a phone hotspot works as a manual fallback). First trust between two devices is the full-fingerprint comparison on both screens - it is only as strong as actually comparing it. The protocol has not been independently audited; see [docs/PROTOCOL.md](docs/PROTOCOL.md).
+- **Android-to-Android transfer works without a shared network** (Nearby Connections: Bluetooth to find the phone, Wi-Fi Direct for the bytes). It needs Google Play services on both phones, so phones without it (some Huawei) and iPhones are out. **Phone-to-Windows transfer still needs the same Wi-Fi network** (a phone hotspot works as a manual fallback). First trust between two devices is the full-fingerprint comparison on both screens - it is only as strong as actually comparing it. The protocol has not been independently audited; see [docs/PROTOCOL.md](docs/PROTOCOL.md).
 - The optional **browser fallback is plain HTTP on the local network: it is not encrypted**. The link contains a random session token and sharing stops after 10 minutes or when you stop it, but treat the link like a key.
 - The Android **ad blocker is basic**: it blocks known ad hosts and pop-ups opened without a tap. It will miss ads served from the same host as the content, and in-page or video ads. Some sites' downloads (blob: or script-made links) do not work in the in-app browser.
 - You are responsible for having the right to download and keep the content you save. VidGrab does not check this for you.
@@ -101,13 +101,22 @@ git push -u origin main
 
 ## Getting installable downloads (build in the cloud)
 
-This repo includes a GitHub Actions workflow (`.github/workflows/build.yml`) that builds the binaries for you in the cloud - no local builds needed:
+This repo includes a GitHub Actions workflow (`.github/workflows/build.yml`) that builds everything in the cloud - no local builds needed.
 
-1. Push the code to your GitHub repo (above).
-2. On your repo page open the **Actions** tab → **Build binaries** → **Run workflow**.
-3. When the run finishes, download its artifacts: **VidGrab.exe** (Windows, no Python needed), the **Android APKs**, `VidGrab-NOTICES.zip` (license notices), and the GPL ffmpeg source archives that belong with the binaries.
+**Automatic: push a version tag.**
 
-Nothing is published automatically. To share download links publicly, create a GitHub Release yourself (**Releases** → **Draft a new release**) and upload those verified artifacts to it.
+```bash
+git tag v11
+git push origin v11
+```
+
+The workflow builds the Android APKs and the Windows build, then creates a GitHub Release named after the tag with every file attached (`vidgrab-v11-arm64-v8a-debug.apk`, `vidgrab-v11-windows.zip`, the license notices and the ffmpeg source archives).
+
+**Manual: run it yourself.**
+
+1. On your repo page open the **Actions** tab → **Build binaries** → **Run workflow**.
+2. When the run finishes, download its artifacts: **VidGrab.exe** (Windows, no Python needed), the **Android APKs**, `VidGrab-NOTICES.zip` (license notices), and the GPL ffmpeg source archives that belong with the binaries.
+3. Attach them to a release yourself (**Releases** → **Draft a new release**) if you want public download links.
 
 Notes:
 - The APKs are **debug-signed pre-release builds**: fine for trying on your own devices (Android will ask to allow installing unknown apps), not signed with your own key yet. Proper release signing is on the roadmap.
@@ -166,3 +175,4 @@ Credits and dependency licenses: [docs/CREDITS.md](docs/CREDITS.md). This tool i
 - Auto-paste of a copied link when the app is focused (Settings switch on Android, "Watch clipboard" on Windows). Android reads the clipboard only while the app is in the foreground.
 
 - v9: warm sand/taupe look (Dark/Light/Glass), My Files redesign with search and menu, quality rows, redesigned audio player.
+- v11: nearby send between Android phones (Bluetooth + Wi-Fi Direct, no shared Wi-Fi), 4-digit code compared on both screens, same-Wi-Fi transfer kept as a fallback, and a tag-triggered GitHub Actions release.

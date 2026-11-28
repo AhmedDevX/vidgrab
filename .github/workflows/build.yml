@@ -1,18 +1,29 @@
 name: Build binaries
 
-# Build-only workflow: runs manually from the Actions tab ("Run workflow")
-# and stores VidGrab.exe, the Android APKs, the license notices bundle and
-# the GPL corresponding-source archives as workflow artifacts.
+# Two ways to run:
 #
-# Nothing is published automatically. Attaching these artifacts to a GitHub
-# Release is a separate, manual step: download the artifacts, verify them,
-# then create the release yourself and upload the files.
+#  1. Manually from the Actions tab ("Run workflow"). Builds everything and
+#     stores VidGrab.exe, the Android APKs, the license notices bundle and
+#     the GPL corresponding-source archives as workflow artifacts. Nothing
+#     is published.
+#
+#  2. Push a version tag. The same builds run, then a GitHub Release named
+#     after the tag is created and every file is attached to it:
+#
+#         git tag v11
+#         git push origin v11
+#
+# The APKs are debug-signed sideload builds (the repo holds no release
+# keystore); the Windows zip is the unpacked PyInstaller build.
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android:
@@ -29,7 +40,11 @@ jobs:
         run: |
           chmod +x android/gradlew
           cd android
-          ./gradlew :app:assembleDebug --console=plain
+          VERSION_ARG=""
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION_ARG="-PvidgrabVersionName=${GITHUB_REF_NAME}"
+          fi
+          ./gradlew :app:assembleDebug --console=plain $VERSION_ARG
 
       - name: Fetch Android ffmpeg corresponding source (FFmpeg n7.1.1)
         run: curl -fL https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz -o ffmpeg-7.1.1-src.tar.xz
@@ -99,3 +114,52 @@ jobs:
           path: |
             VidGrab-NOTICES.zip
             ffmpeg-2a571b6068-src.tar.gz
+
+  release:
+    name: Publish GitHub Release
+    needs: [android, windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect every build artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Name the files after the tag
+        run: |
+          set -e
+          cd dist/android-apks
+          for f in *.apk; do
+            cp "$f" "../../vidgrab-${GITHUB_REF_NAME}-${f#app-}"
+          done
+          cd ../..
+          mv dist/android-notices-and-source/VidGrab-NOTICES.zip VidGrab-NOTICES-android.zip
+          mv dist/windows-notices-and-source/VidGrab-NOTICES.zip VidGrab-NOTICES-windows.zip
+          cd dist/windows-app-dir
+          zip -qr "../../vidgrab-${GITHUB_REF_NAME}-windows.zip" .
+          cd ../..
+
+      - name: Create the release and attach everything
+        uses: softprops/action-gh-release@v2
+        with:
+          name: VidGrab ${{ github.ref_name }}
+          body: |
+            Built automatically from tag ${{ github.ref_name }}.
+
+            - Android APKs are debug-signed sideload builds. Use
+              `vidgrab-${{ github.ref_name }}-arm64-v8a-debug.apk` on any
+              modern phone; the v7a and x86_64 builds are for older phones
+              and emulators.
+            - `vidgrab-${{ github.ref_name }}-windows.zip` is the unpacked
+              Windows build: unzip it and run `VidGrab.exe`. No Python needed.
+            - `VidGrab-NOTICES-*.zip` hold the third-party license texts;
+              the `ffmpeg-*-src` archives are the corresponding source for
+              the bundled GPL ffmpeg builds.
+          files: |
+            vidgrab-${{ github.ref_name }}-*.apk
+            vidgrab-${{ github.ref_name }}-windows.zip
+            VidGrab-NOTICES-android.zip
+            VidGrab-NOTICES-windows.zip
+            dist/android-notices-and-source/ffmpeg-*.tar.xz
+            dist/windows-notices-and-source/ffmpeg-*.tar.gz
