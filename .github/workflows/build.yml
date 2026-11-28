@@ -36,15 +36,48 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Installs the SDK command-line tools and accepts the licences, so
+      # Gradle can fetch platform 34 / build-tools 34.0.0 on a clean runner.
+      - uses: android-actions/setup-android@v3
+
+      # The project caps its build JVM at 900 MB (fine on a laptop, too
+      # small for a cold dex/package of the bundled ffmpeg + Python libs).
+      # GRADLE_USER_HOME properties outrank the project's gradle.properties,
+      # so this raises the limit for CI only.
+      - name: Raise build memory
+        run: |
+          mkdir -p ~/.gradle
+          {
+            echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g"
+            echo "kotlin.daemon.jvmargs=-Xmx2g"
+            echo "org.gradle.workers.max=2"
+          } >> ~/.gradle/gradle.properties
+          cat ~/.gradle/gradle.properties
+
+      - name: Show toolchain
+        run: |
+          java -version
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --list_installed || true
+
       - name: Build APKs
         run: |
+          set -o pipefail
           chmod +x android/gradlew
           cd android
           VERSION_ARG=""
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             VERSION_ARG="-PvidgrabVersionName=${GITHUB_REF_NAME}"
           fi
-          ./gradlew :app:assembleDebug --console=plain $VERSION_ARG
+          ./gradlew :app:assembleDebug --console=plain --stacktrace \
+            -PvidgrabUniversal=false $VERSION_ARG 2>&1 | tee ../gradle-build.log
+
+      - name: Keep the Gradle log when the build fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: gradle-build.log
 
       - name: Fetch Android ffmpeg corresponding source (FFmpeg n7.1.1)
         run: curl -fL https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz -o ffmpeg-7.1.1-src.tar.xz
